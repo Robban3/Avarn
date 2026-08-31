@@ -49,30 +49,32 @@ type LogoProps = {
 };
 
 export function AvarnLogo({ size = "sm", className = "" }: LogoProps) {
-  const large = size === "lg";
+  // Stor storlek följer varumärkets stående lockup: märket över ordmärket.
+  // Liten storlek ligger på rad, som i ett sidhuvud.
+  if (size === "lg") {
+    return (
+      <span className={`inline-flex flex-col items-center ${className}`}>
+        <AvarnMark className="h-[62px] w-[100px] text-brand" title="Avarn Security" />
+        <span className="mt-4 flex flex-col leading-none">
+          <span className="text-[34px] font-semibold tracking-[0.08em] text-fg">
+            AVARN
+          </span>
+          <span className="mt-1.5 self-end text-[15px] font-normal tracking-[0.02em] text-fg-muted">
+            Security
+          </span>
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <AvarnMark
-        className={large ? "h-11 w-[70px] text-brand" : "h-7 w-[45px] text-brand"}
-        title="Avarn Security"
-      />
+      <AvarnMark className="h-7 w-[45px] text-brand" title="Avarn Security" />
       <span className="flex flex-col leading-none">
-        <span
-          className={
-            large
-              ? "text-[28px] font-semibold tracking-[0.06em] text-fg"
-              : "text-[17px] font-semibold tracking-[0.06em] text-fg"
-          }
-        >
+        <span className="text-[17px] font-semibold tracking-[0.06em] text-fg">
           AVARN
         </span>
-        <span
-          className={
-            large
-              ? "mt-1 self-end text-[13px] font-normal tracking-[0.02em] text-fg-muted"
-              : "mt-0.5 self-end text-[9px] font-normal tracking-[0.02em] text-fg-muted"
-          }
-        >
+        <span className="mt-0.5 self-end text-[9px] font-normal tracking-[0.02em] text-fg-muted">
           Security
         </span>
       </span>
