@@ -1,15 +1,13 @@
-import { createReadStream, statSync } from "node:fs";
-import { Readable } from "node:stream";
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { canAccessMedia } from "@/lib/media-access";
-import { uploadPath } from "@/lib/media";
+import { readUpload } from "@/lib/media";
 import { audit } from "@/lib/audit";
 
 /**
  * Lämnar ut en uppladdad fil, men först efter behörighetskontroll.
- * Filerna ligger utanför /public just för att den här kontrollen ska
- * gå att göra.
+ * Filerna ligger i privat lagring just för att den här kontrollen ska
+ * kunna göras – de är aldrig åtkomliga via en publik adress.
  */
 export async function GET(
   _request: NextRequest,
@@ -35,22 +33,15 @@ export async function GET(
     return new Response("Hittades inte.", { status: 404 });
   }
 
-  const filePath = uploadPath(asset.storedName);
-  let size: number;
-  try {
-    size = statSync(filePath).size;
-  } catch {
+  const bytes = await readUpload(asset.storedName);
+  if (!bytes) {
     return new Response("Hittades inte.", { status: 404 });
   }
 
-  const stream = Readable.toWeb(
-    createReadStream(filePath),
-  ) as unknown as ReadableStream;
-
-  return new Response(stream, {
+  return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": asset.mimeType,
-      "Content-Length": String(size),
+      "Content-Length": String(bytes.byteLength),
       "Content-Disposition": `inline; filename="${encodeURIComponent(asset.originalName)}"`,
       // Filerna är skyddsvärda och får inte mellanlagras av delade cacher.
       "Cache-Control": "private, max-age=3600",

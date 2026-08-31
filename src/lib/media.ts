@@ -1,12 +1,16 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { BUCKET, ensureBucket, storageClient } from "./storage";
 
 /**
- * Bilder och filmer sparas på disk utanför /public och lämnas bara ut via
- * /api/media/[id], som kontrollerar behörigheten först. Vill man byta till
- * molnlagring är det de här tre funktionerna som ska skrivas om.
+ * Bilder och filmer lämnas bara ut via /api/media/[id], som kontrollerar
+ * behörigheten först – aldrig direkt från /public.
+ *
+ * Var filen faktiskt ligger avgörs av src/lib/storage.ts: Supabase Storage
+ * när nycklarna är satta, annars disken. Anropande kod behöver inte veta
+ * vilket.
  */
 
 const UPLOAD_DIR = path.join(process.cwd(), "storage", "uploads");
@@ -46,10 +50,22 @@ export async function storeUpload(file: File) {
     throw new Error("Filen är för stor. Högst 25 MB per fil.");
   }
 
-  await mkdir(UPLOAD_DIR, { recursive: true });
   const storedName = `${randomUUID()}${spec.ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(uploadPath(storedName), bytes);
+
+  const client = storageClient();
+  if (client) {
+    await ensureBucket(client);
+    const { error } = await client.storage
+      .from(BUCKET)
+      .upload(storedName, bytes, { contentType: file.type, upsert: false });
+    if (error) {
+      throw new Error(`Kunde inte spara filen: ${error.message}`);
+    }
+  } else {
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    await writeFile(uploadPath(storedName), bytes);
+  }
 
   return {
     storedName,
@@ -60,7 +76,31 @@ export async function storeUpload(file: File) {
   };
 }
 
+/** Hämtar filens innehåll. Anropas bara efter godkänd behörighetskontroll. */
+export async function readUpload(storedName: string): Promise<Buffer | null> {
+  const client = storageClient();
+
+  if (client) {
+    const { data, error } = await client.storage.from(BUCKET).download(storedName);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  }
+
+  try {
+    return await readFile(uploadPath(storedName));
+  } catch {
+    return null;
+  }
+}
+
 export async function removeUpload(storedName: string) {
+  const client = storageClient();
+
+  if (client) {
+    await client.storage.from(BUCKET).remove([storedName]);
+    return;
+  }
+
   try {
     await unlink(uploadPath(storedName));
   } catch {

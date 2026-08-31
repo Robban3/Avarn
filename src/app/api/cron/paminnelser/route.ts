@@ -10,23 +10,42 @@ import { daysUntil } from "@/lib/format";
  * Anropas av en schemaläggare en gång per dygn:
  *   curl -H "x-cron-key: $CRON_KEY" https://.../api/cron/paminnelser
  *
+ * Vercels schemaläggare skickar i stället "Authorization: Bearer $CRON_SECRET"
+ * och kan inte sätta egna huvuden, så båda formerna godtas.
+ *
  * Varje mottagare varnas en gång per certifikat och tröskel (30 respektive
  * 7 dagar), så att en daglig körning inte fyller meddelandelistan.
  */
 
 const THRESHOLDS = [CERT_WARNING_DAYS, 30, 7];
 
-export async function POST(request: NextRequest) {
-  const key = request.headers.get("x-cron-key");
+/** Godkänner anropet om nyckeln stämmer, oavsett vilket huvud den kom i. */
+function isAuthorised(request: NextRequest) {
   const expected = process.env.CRON_KEY;
+  if (!expected) return false;
 
-  if (!expected) {
+  if (request.headers.get("x-cron-key") === expected) return true;
+
+  // Vercel Cron: Authorization: Bearer <CRON_SECRET>
+  const bearer = request.headers.get("authorization");
+  const vercelSecret = process.env.CRON_SECRET;
+  if (bearer?.startsWith("Bearer ")) {
+    const token = bearer.slice(7);
+    if (token === expected) return true;
+    if (vercelSecret && token === vercelSecret) return true;
+  }
+
+  return false;
+}
+
+export async function POST(request: NextRequest) {
+  if (!process.env.CRON_KEY) {
     return Response.json(
       { error: "CRON_KEY är inte konfigurerad." },
       { status: 500 },
     );
   }
-  if (key !== expected) {
+  if (!isAuthorised(request)) {
     return Response.json({ error: "Ogiltig nyckel." }, { status: 401 });
   }
 

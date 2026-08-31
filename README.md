@@ -59,6 +59,46 @@ vägen — klistra aldrig in anslutningssträngen i en chatt.
 Filen genereras om med `npm run db:sql` efter en schemaändring; den skrivs
 aldrig för hand.
 
+## Driftsättning på Vercel
+
+Appen är förberedd för Vercel, som når Supabase utan de brandväggsspärrar
+som ofta blockerar Postgres-portar på kontorsnät.
+
+1. **New Project → importera `Robban3/Avarn`.** Ramverket känns igen
+   automatiskt; inga byggkommandon behöver ändras.
+2. **Lägg in miljövariablerna:**
+
+   | Variabel | Var den hämtas |
+   | --- | --- |
+   | `DATABASE_URL` | Supabase → Connect → Transaction pooler (port 6543) |
+   | `DIRECT_URL` | Supabase → Connect → Session pooler (port 5432) |
+   | `AUTH_SECRET` | valfri lång slumpsträng, t.ex. från `npm run setup` |
+   | `CRON_KEY` | valfri slumpsträng |
+   | `SUPABASE_URL` | Supabase → Settings → API → Project URL |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → `service_role` |
+
+3. **Deploy.**
+
+Byggsteget kör `prisma migrate deploy` före `next build`, så schemaändringar
+följer med varje driftsättning. `vercel.json` lägger appen i Dublin (`dub1`),
+samma region som en Supabase i `eu-west-1`, och schemalägger
+`/api/cron/paminnelser` klockan 06 varje dag.
+
+`SUPABASE_SERVICE_ROLE_KEY` går förbi radsäkerheten och får aldrig hamna i
+klientkod eller i en `NEXT_PUBLIC_`-variabel. Den används bara på servern,
+för bilagorna.
+
+### Bilagor i drift
+
+Vercels filsystem är flyktigt, så uppladdade bilder och filmer kan inte
+ligga på disk. Är `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY` satta
+sparas de i stället i en privat hink i Supabase Storage, som skapas
+automatiskt vid första uppladdningen. Saknas nycklarna används disken, så
+att lokal utveckling fungerar utan moln.
+
+Utlämningen går oavsett lagring genom `/api/media/[id]`, som gör
+behörighetskontrollen först — filerna är aldrig publikt åtkomliga.
+
 ### Radsäkerhet i Supabase
 
 Supabase publicerar schemat `public` genom sitt REST-API, och `anon`-nyckeln
