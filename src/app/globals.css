@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Avarn Security – grafisk profil
+   Antracit/svart bas, turkos accent, vit text. Alla färger sätts här och
+   ingen annanstans, så profilen kan justeras mot exakta varumärkesvärden
+   genom att ändra i det här blocket.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Ytor */
+  --color-bg: #0b0e0f;
+  --color-bg-deep: #070909;
+  --color-surface: #161a1c;
+  --color-surface-2: #1e2325;
+  --color-surface-3: #262c2e;
+  --color-line: #272d2f;
+  --color-line-soft: #1f2426;
+
+  /* Varumärke */
+  --color-brand: #4fd1c5;
+  --color-brand-strong: #6fe0d6;
+  --color-brand-deep: #2f9a91;
+  --color-ink: #2b2d2e;
+
+  /* Text */
+  --color-fg: #f4f7f7;
+  --color-fg-muted: #98a2a3;
+  --color-fg-dim: #6b7476;
+
+  /* Status */
+  --color-ok: #46d07f;
+  --color-warn: #e9b44c;
+  --color-danger: #e86b6b;
+  --color-info: #5aa9e6;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1rem;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-bg-deep);
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Inputs ärver den mörka profilen överallt */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-fg-dim);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Diskret rullningslist som inte bryter mot den mörka ytan */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-3) transparent;
+  }
+}
+
+@layer components {
+  /* Kort – grundytan i hela appen */
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  /* Rubrik över en sektion, versal och gles som i profilen */
+  .section-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-fg-dim);
+  }
+
+  /* Chip – sökinriktningar, utbildningar, taggar */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3125rem 0.625rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface-2);
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--color-fg);
+    white-space: nowrap;
+  }
+
+  /* Fältetikett i formulär */
+  .field-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+    margin-bottom: 0.375rem;
+  }
+
+  /* Textfält, textarea och select delar utseende */
+  .field {
+    width: 100%;
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-line);
+    border-radius: 0.625rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.9375rem;
+    color: var(--color-fg);
+  }
+
+  .field:focus {
+    border-color: var(--color-brand-deep);
+    outline: none;
+  }
+
+  select.field {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--color-fg-muted) 50%),
+      linear-gradient(135deg, var(--color-fg-muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 2rem;
+  }
+
+  /* Knappar */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    padding: 0.6875rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+    cursor: pointer;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-brand);
+    color: #06201e;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-brand-strong);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-line);
+    color: var(--color-fg);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-3);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-fg-muted);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--color-fg);
+  }
+
+  .btn-danger {
+    background-color: transparent;
+    border: 1px solid color-mix(in srgb, var(--color-danger) 45%, transparent);
+    color: var(--color-danger);
+  }
+}
+
+/* Dölj rullningslist där den skulle störa en horisontell rad */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

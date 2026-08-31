@@ -1,0 +1,506 @@
+// Avarn Hundtjänst – datamodell
+//
+// Navet är ekipaget (Team = hundförare + hund). Träning, uppdrag, rapporter
+// och certifikat hänger på ekipaget, vilket gör behörighetsfiltreringen till
+// en enda återanvändbar fråga (se src/lib/authz.ts).
+//
+// Statusfält och typer lagras som String eftersom SQLite inte stöder enum.
+// De tillåtna värdena definieras i src/lib/domain.ts och valideras med Zod.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------------------------------------------------------------- Organisation
+
+model Region {
+  id       String @id @default(cuid())
+  code     String @unique
+  name     String
+  sortOrder Int   @default(0)
+
+  users    User[]
+  teams    Team[]
+  missions Mission[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String // HANDLER | INSTRUCTOR | REGIONAL_MANAGER | NATIONAL_MANAGER | ADMIN
+  phone        String?
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  regionId String?
+  region   Region? @relation(fields: [regionId], references: [id])
+
+  handlerProfile HandlerProfile?
+
+  teams                 Team[]                 @relation("HandlerTeams")
+  instructorAssignments InstructorAssignment[]
+  trainingPlans         TrainingPlan[]         @relation("PlanInstructor")
+  createdSessions       TrainingSession[]      @relation("SessionAuthor")
+  approvedSessions      TrainingSession[]      @relation("SessionApprover")
+  createdMissions       Mission[]              @relation("MissionCreator")
+  assignmentsMade       MissionAssignment[]    @relation("AssignmentAssigner")
+  reports               OperationalReport[]    @relation("ReportAuthor")
+  approvedReports       OperationalReport[]    @relation("ReportApprover")
+  comments              Comment[]
+  followUps             FollowUp[]             @relation("FollowUpInstructor")
+  notifications         Notification[]
+  certifications        Certification[]
+  uploads               MediaAsset[]           @relation("MediaUploader")
+  auditLogs             AuditLog[]
+
+  @@index([role])
+  @@index([regionId])
+}
+
+model HandlerProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeNumber String?
+  baseLocation   String?
+  bio            String?
+  photoUrl       String?
+}
+
+// ---------------------------------------------------------------------- Hundar
+
+model Dog {
+  id         String    @id @default(cuid())
+  name       String
+  breed      String
+  birthDate  DateTime
+  sex        String? // HANE | TIK
+  chipNumber String?
+  photoUrl   String?
+  status     String    @default("ACTIVE") // ACTIVE | RESTING | RETIRED
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  teams          Team[]
+  disciplines    DogDiscipline[]
+  educations     DogEducation[]
+  certifications Certification[]
+}
+
+model SearchDiscipline {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  shortLabel  String // visas som tagg i uppdragslistan, t.ex. "SÖK – SPÅR"
+  description String?
+  sortOrder   Int     @default(0)
+
+  dogs      DogDiscipline[]
+  missions  Mission[]
+  sessions  TrainingSession[]
+  exercises PlannedExercise[]
+}
+
+model DogDiscipline {
+  id           String   @id @default(cuid())
+  dogId        String
+  dog          Dog      @relation(fields: [dogId], references: [id], onDelete: Cascade)
+  disciplineId String
+  discipline   SearchDiscipline @relation(fields: [disciplineId], references: [id])
+  level        String? // GRUND | FORTSATT | SPECIALIST
+  certifiedAt  DateTime?
+
+  @@unique([dogId, disciplineId])
+}
+
+model DogEducation {
+  id          String    @id @default(cuid())
+  dogId       String
+  dog         Dog       @relation(fields: [dogId], references: [id], onDelete: Cascade)
+  name        String
+  provider    String?
+  completedAt DateTime?
+}
+
+// --------------------------------------------------------------------- Ekipage
+
+model Team {
+  id        String    @id @default(cuid())
+  handlerId String
+  handler   User      @relation("HandlerTeams", fields: [handlerId], references: [id])
+  dogId     String
+  dog       Dog       @relation(fields: [dogId], references: [id])
+  regionId  String
+  region    Region    @relation(fields: [regionId], references: [id])
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  status    String    @default("ACTIVE") // ACTIVE | PAUSED | ENDED
+
+  instructorAssignments InstructorAssignment[]
+  availability          TeamAvailability[]
+  trainingPlans         TrainingPlan[]
+  trainingSessions      TrainingSession[]
+  missionAssignments    MissionAssignment[]
+  reports               OperationalReport[]
+  certifications        Certification[]
+  followUps             FollowUp[]
+  comments              Comment[]
+
+  @@unique([handlerId, dogId])
+  @@index([regionId])
+}
+
+model InstructorAssignment {
+  id           String   @id @default(cuid())
+  instructorId String
+  instructor   User     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([instructorId, teamId])
+  @@index([teamId])
+}
+
+model TeamAvailability {
+  id      String   @id @default(cuid())
+  teamId  String
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  startAt DateTime
+  endAt   DateTime
+  kind    String // AVAILABLE | UNAVAILABLE
+  note    String?
+
+  @@index([teamId, startAt])
+}
+
+// ------------------------------------------------------- Certifikat/behörighet
+
+model CertificationType {
+  id             String  @id @default(cuid())
+  code           String  @unique
+  name           String
+  validityMonths Int
+  appliesTo      String // DOG | HANDLER | TEAM
+  description    String?
+
+  certifications Certification[]
+}
+
+model Certification {
+  id        String   @id @default(cuid())
+  typeId    String
+  type      CertificationType @relation(fields: [typeId], references: [id])
+  dogId     String?
+  dog       Dog?     @relation(fields: [dogId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  issuer    String?
+  reference String?
+  issuedAt  DateTime
+  expiresAt DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+
+  documents MediaAsset[]
+
+  @@index([expiresAt])
+  @@index([dogId])
+  @@index([teamId])
+}
+
+// -------------------------------------------------------------------- Träning
+
+model TrainingPlan {
+  id           String    @id @default(cuid())
+  teamId       String
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   User      @relation("PlanInstructor", fields: [instructorId], references: [id])
+  title        String
+  purpose      String?
+  periodStart  DateTime
+  periodEnd    DateTime
+  status       String    @default("ACTIVE") // DRAFT | ACTIVE | COMPLETED | ARCHIVED
+  createdAt    DateTime  @default(now())
+
+  exercises PlannedExercise[]
+
+  @@index([teamId])
+}
+
+model PlannedExercise {
+  id           String   @id @default(cuid())
+  planId       String
+  plan         TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String?
+  disciplineId String?
+  discipline   SearchDiscipline? @relation(fields: [disciplineId], references: [id])
+  targetOdor   String?
+  environment  String?
+  dueDate      DateTime?
+  sortOrder    Int      @default(0)
+  status       String   @default("PLANNED") // PLANNED | COMPLETED | SKIPPED
+
+  session TrainingSession?
+
+  @@index([planId])
+}
+
+model TrainingSession {
+  id           String   @id @default(cuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  plannedExerciseId String? @unique
+  plannedExercise   PlannedExercise? @relation(fields: [plannedExerciseId], references: [id])
+
+  startAt      DateTime
+  endAt        DateTime?
+  location     String
+  trainingArea String // t.ex. Områdessök, Fordonssök
+  environment  String // sökmiljö, t.ex. Skog, Inomhus
+  targetOdor   String // måldoft
+  disciplineId String?
+  discipline   SearchDiscipline? @relation(fields: [disciplineId], references: [id])
+
+  hideCount  Int    @default(0)
+  foundCount Int    @default(0)
+  comment    String?
+
+  status       String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | CHANGES_REQUESTED
+  createdById  String
+  createdBy    User      @relation("SessionAuthor", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy   User?     @relation("SessionApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  hides    Hide[]
+  media    MediaAsset[]
+  comments Comment[]
+
+  @@index([teamId, startAt])
+  @@index([status])
+}
+
+model Hide {
+  id            String  @id @default(cuid())
+  sessionId     String
+  session       TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  label         String?
+  placement     String?
+  heightCm      Int?
+  difficulty    String? // LATT | MEDEL | SVAR
+  outcome       String  @default("FOUND") // FOUND | MISSED | FALSE_INDICATION
+  searchSeconds Int?
+  notes         String?
+  sortOrder     Int     @default(0)
+
+  @@index([sessionId])
+}
+
+// -------------------------------------------------------------------- Uppdrag
+
+model Customer {
+  id           String  @id @default(cuid())
+  name         String
+  orgNumber    String?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  notes        String?
+
+  missions Mission[]
+}
+
+model Mission {
+  id                  String    @id @default(cuid())
+  reference           String    @unique
+  title               String
+  missionType         String // Flygplatskontroll, Evenemangssök, Lagerkontroll, Bostadssök ...
+  customerId          String?
+  customer            Customer? @relation(fields: [customerId], references: [id])
+  contactName         String?
+  contactPhone        String?
+  startAt             DateTime
+  endAt               DateTime?
+  address             String?
+  locality            String
+  regionId            String
+  region              Region    @relation(fields: [regionId], references: [id])
+  disciplineId        String?
+  discipline          SearchDiscipline? @relation(fields: [disciplineId], references: [id])
+  specialInstructions String?
+  status              String    @default("PLANNED") // PLANNED | ASSIGNED | IN_PROGRESS | COMPLETED | CANCELLED
+  createdById         String
+  createdBy           User      @relation("MissionCreator", fields: [createdById], references: [id])
+  createdAt           DateTime  @default(now())
+
+  assignments MissionAssignment[]
+  reports     OperationalReport[]
+
+  @@index([startAt])
+  @@index([regionId])
+  @@index([status])
+}
+
+model MissionAssignment {
+  id           String    @id @default(cuid())
+  missionId    String
+  mission      Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User      @relation("AssignmentAssigner", fields: [assignedById], references: [id])
+  status       String    @default("OFFERED") // OFFERED | ACCEPTED | DECLINED | COMPLETED
+  note         String?
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([missionId, teamId])
+  @@index([teamId])
+}
+
+model OperationalReport {
+  id           String    @id @default(cuid())
+  missionId    String
+  mission      Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User      @relation("ReportAuthor", fields: [authorId], references: [id])
+
+  areasSearched String?
+  findings      String?
+  deviations    String?
+  actions       String?
+  startedAt     DateTime?
+  endedAt       DateTime?
+
+  status       String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED
+  submittedAt  DateTime?
+  approvedById String?
+  approvedBy   User?     @relation("ReportApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  indications Indication[]
+  media       MediaAsset[]
+  comments    Comment[]
+
+  @@index([teamId])
+  @@index([missionId])
+  @@index([status])
+}
+
+model Indication {
+  id           String @id @default(cuid())
+  reportId     String
+  report       OperationalReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  location     String?
+  description  String?
+  outcome      String @default("FIND") // FIND | NO_FIND | FALSE_INDICATION
+  handedOverTo String?
+  sortOrder    Int    @default(0)
+
+  @@index([reportId])
+}
+
+// ------------------------------------------------------------------ Gemensamt
+
+model MediaAsset {
+  id           String   @id @default(cuid())
+  kind         String // IMAGE | VIDEO | DOCUMENT
+  originalName String
+  storedName   String   @unique
+  mimeType     String
+  size         Int
+  uploadedById String
+  uploadedBy   User     @relation("MediaUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  trainingSessionId String?
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  reportId          String?
+  report            OperationalReport? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  certificationId   String?
+  certification     Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@index([trainingSessionId])
+  @@index([reportId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  trainingSessionId String?
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  reportId          String?
+  report            OperationalReport? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  teamId            String?
+  team              Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([trainingSessionId])
+  @@index([reportId])
+}
+
+model FollowUp {
+  id           String    @id @default(cuid())
+  teamId       String
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   User      @relation("FollowUpInstructor", fields: [instructorId], references: [id])
+  title        String
+  message      String?
+  dueDate      DateTime?
+  status       String    @default("OPEN") // OPEN | DONE
+  createdAt    DateTime  @default(now())
+
+  @@index([teamId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // MISSION_ASSIGNED | COMMENT | TRAINING_PLANNED | CERT_EXPIRING | FOLLOW_UP | SESSION_APPROVED
+  title     String
+  body      String?
+  url       String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String // READ | CREATE | UPDATE | DELETE | LOGIN | DENIED
+  entityType String
+  entityId   String?
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

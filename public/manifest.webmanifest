@@ -1,0 +1,16 @@
+{
+  "name": "Avarn Hundtjänst",
+  "short_name": "Avarn Hund",
+  "description": "Operativt stöd för Avarn Securitys hundförare, instruktörer och ledning.",
+  "lang": "sv-SE",
+  "start_url": "/hem",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0e0f",
+  "theme_color": "#0b0e0f",
+  "icons": [
+    { "src": "/ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/ikon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
