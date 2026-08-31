@@ -92,17 +92,17 @@ async function main() {
   // ---------------------------------------------------------- Sökinriktningar
   console.log("Skapar sökinriktningar …");
   const disciplineData = [
-    { code: "SPAR", name: "Sök – spår", shortLabel: "SÖK – SPÅR", sortOrder: 1,
+    { code: "SPAR", name: "Spårsök", shortLabel: "SÖK – SPÅR", sortOrder: 1,
       description: "Spårsök efter person eller föremål." },
-    { code: "YTA", name: "Sök – yta", shortLabel: "SÖK – YTA", sortOrder: 2,
+    { code: "YTA", name: "Ytsök", shortLabel: "SÖK – YTA", sortOrder: 2,
       description: "Ytsök över öppna och bebyggda områden." },
-    { code: "GODS", name: "Sök – gods", shortLabel: "SÖK – GODS", sortOrder: 3,
+    { code: "GODS", name: "Godssök", shortLabel: "SÖK – GODS", sortOrder: 3,
       description: "Sök i gods, bagage och fordon." },
-    { code: "NARKOTIKA", name: "Narkotikasök", shortLabel: "NARKOTIKA", sortOrder: 4,
+    { code: "NARKOTIKA", name: "Narkotika", shortLabel: "NARKOTIKA", sortOrder: 4,
       description: "Sök efter narkotiska preparat." },
-    { code: "SPRANG", name: "Sprängämnessök", shortLabel: "SPRÄNGÄMNEN", sortOrder: 5,
+    { code: "SPRANG", name: "Sprängämnen", shortLabel: "SPRÄNGÄMNEN", sortOrder: 5,
       description: "Sök efter explosiva ämnen." },
-    { code: "VAPEN", name: "Vapensök", shortLabel: "VAPEN", sortOrder: 6,
+    { code: "VAPEN", name: "Vapen", shortLabel: "VAPEN", sortOrder: 6,
       description: "Sök efter vapen och ammunition." },
   ];
   for (const d of disciplineData) await db.searchDiscipline.create({ data: d });
