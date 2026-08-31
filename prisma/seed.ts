@@ -573,6 +573,68 @@ async function main() {
     createdSessions[`${s.teamKey}-${i}`] = session.id;
   }
 
+  // Historik längre bak, så att utvecklingen går att följa över tid.
+  // Varje ekipage får ett par pass i månaden fem månader tillbaka.
+  console.log("Skapar träningshistorik …");
+  const historyTeams: { key: string; handlerId: string; discipline: string }[] = [
+    { key: "nova", handlerId: erik.id, discipline: "NARKOTIKA" },
+    { key: "rex", handlerId: erik.id, discipline: "GODS" },
+    { key: "balder", handlerId: johan.id, discipline: "SPAR" },
+    { key: "mira", handlerId: sofie.id, discipline: "NARKOTIKA" },
+    { key: "sigge", handlerId: maria.id, discipline: "SPRANG" },
+    { key: "iris", handlerId: anders.id, discipline: "YTA" },
+    { key: "zeb", handlerId: lisa.id, discipline: "NARKOTIKA" },
+    { key: "tira", handlerId: maria.id, discipline: "NARKOTIKA" },
+  ];
+
+  const historyAreas = ["Områdessök", "Byggnadssök", "Fordonssök", "Bagagesök"];
+  const historyEnvironments = ["Skog", "Lagerlokal", "Fordon", "Terminal"];
+  const historyPlaces = [
+    "Tyresta, Stockholm",
+    "Jordbro terminal",
+    "Farsta industriområde",
+    "Slottsskogen, Göteborg",
+    "Malmö godsterminal",
+    "Umeå, Nydalaområdet",
+    "Örebro logistikcenter",
+  ];
+
+  for (const spec of historyTeams) {
+    // Två pass i månaden, 30 till 150 dagar tillbaka.
+    for (let week = 5; week <= 21; week += 2) {
+      const dayOffset = -week * 7 - (week % 3);
+      const index = week % 4;
+      const hides = 4 + (week % 3);
+      // Träffsäkerheten stiger svagt över tid, som ett ekipage i utveckling.
+      const misses = week > 13 ? 1 : week > 8 ? (week % 2) : 0;
+
+      await db.trainingSession.create({
+        data: {
+          teamId: teams[spec.key].id,
+          startAt: at(dayOffset, 9, 0),
+          endAt: at(dayOffset, 10, 30 + (week % 3) * 15),
+          location: historyPlaces[week % historyPlaces.length],
+          trainingArea: historyAreas[index],
+          environment: historyEnvironments[index],
+          targetOdor:
+            spec.discipline === "SPAR" || spec.discipline === "YTA"
+              ? "Människa"
+              : spec.discipline === "SPRANG"
+                ? "Sprängämnen"
+                : "Narkotika",
+          disciplineId: disc[spec.discipline].id,
+          hideCount: hides,
+          foundCount: hides - misses,
+          comment: "Ordinarie underhållsträning.",
+          status: "APPROVED",
+          createdById: spec.handlerId,
+          approvedById: annaTeams.includes(spec.key) ? anna.id : peter.id,
+          approvedAt: at(dayOffset + 1, 12),
+        },
+      });
+    }
+  }
+
   // Kopplar det senaste godkända Nova-passet till en genomförd planövning
   const firstExercise = novaPlan.exercises.find((e) => e.sortOrder === 1);
   if (firstExercise) {
@@ -792,6 +854,7 @@ async function main() {
       submittedAt: at(-10, 11, 0),
       approvedById: karin.id,
       approvedAt: at(-9, 9, 30),
+      createdAt: at(-10, 10, 45),
       indications: {
         create: [
           {
@@ -827,6 +890,7 @@ async function main() {
       submittedAt: at(-17, 16, 30),
       approvedById: karin.id,
       approvedAt: at(-16, 8, 15),
+      createdAt: at(-17, 16, 20),
     },
   });
 
@@ -843,6 +907,7 @@ async function main() {
       endedAt: at(-21, 12, 30),
       status: "SUBMITTED",
       submittedAt: at(-21, 13, 10),
+      createdAt: at(-21, 12, 55),
       indications: {
         create: [
           {

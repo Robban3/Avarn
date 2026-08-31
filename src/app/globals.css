@@ -27,6 +27,12 @@
   --color-fg-muted: #98a2a3;
   --color-fg-dim: #6b7476;
 
+  /* Diagram – vald för att klara kontrast och ljushetsband mot den mörka
+     kortytan (validerad, se README). Enfärgad eftersom alla diagram i
+     ledningsvyn visar en enda serie. */
+  --color-chart: #2aa79c;
+  --color-chart-soft: #1d3d3c;
+
   /* Status */
   --color-ok: #46d07f;
   --color-warn: #e9b44c;
