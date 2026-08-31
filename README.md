@@ -23,11 +23,17 @@ Avarns grafiska profil.
 
 ```bash
 npm install
-cp .env.example .env        # fyll i AUTH_SECRET och CRON_KEY
-npx prisma migrate dev      # skapar databasen
-npm run seed                # lägger in exempeldata
+npm run setup               # skapar .env, migrerar databasen och lägger in exempeldata
 npm run dev                 # http://localhost:3000
 ```
+
+`npm run setup` skapar en `.env` med slumpade hemligheter om filen saknas, och
+låter en befintlig vara. `.env.example` visar vilka variabler som finns.
+
+Kör alltid `npm install` först. Utan installerade beroenden hämtar `npx` den
+senaste Prisma-versionen från nätet i stället för projektets, vilket ger fel
+som ser ut att komma från konfigurationen. Kontrollera med
+`npx prisma --version` att 7.10.0 rapporteras.
 
 ### Konton i exempeldatan
 

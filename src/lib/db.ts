@@ -8,7 +8,7 @@ import { PrismaClient } from "@/generated/prisma";
 const createClient = () =>
   new PrismaClient({
     adapter: new PrismaBetterSqlite3({
-      url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+      url: process.env.DATABASE_URL ?? "file:./dev.db",
     }),
   });
 
