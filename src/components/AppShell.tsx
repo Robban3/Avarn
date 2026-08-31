@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
+import { AvarnLogo } from "./AvarnLogo";
 import { ArrowLeftIcon, BellIcon, MenuIcon } from "./icons";
 
 /**
@@ -10,30 +11,43 @@ import { ArrowLeftIcon, BellIcon, MenuIcon } from "./icons";
  */
 
 type AppShellProps = {
-  /** Utelämnas på hemskärmen, som i designunderlaget saknar rubrik. */
+  /** Utelämnas när sidhuvudet bara ska visa logotypen. */
   title?: string;
+  /**
+   * Visar logotypen till vänster med sidnamnet i turkos bredvid, i stället
+   * för en centrerad versal rubrik. Används på startsidan.
+   */
+  branded?: boolean;
   /** Visas som bakåtpil i stället för menyknapp. */
   backHref?: string;
   /** Extra knapp längst till höger i sidhuvudet, t.ex. filter eller spara. */
   action?: ReactNode;
   /** Antal olästa notifieringar; döljer klockan när värdet är undefined. */
   unread?: number;
+  /** Bredare innehållsyta för instrumentpanelen. */
+  wide?: boolean;
   children: ReactNode;
   role: string;
 };
 
 export function AppShell({
   title,
+  branded = false,
   backHref,
   action,
   unread,
+  wide = false,
   children,
   role,
 }: AppShellProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="sticky top-0 z-30 border-b border-line-soft bg-bg/95 backdrop-blur supports-[backdrop-filter]:bg-bg/80">
-        <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-2 px-4">
+        <div
+          className={`mx-auto flex h-14 w-full items-center gap-2 px-4 ${
+            wide ? "max-w-5xl" : "max-w-4xl"
+          }`}
+        >
           {backHref ? (
             <Link
               href={backHref}
@@ -52,7 +66,22 @@ export function AppShell({
             </Link>
           )}
 
-          {title ? (
+          {branded ? (
+            <div className="flex flex-1 items-center gap-3">
+              <AvarnLogo />
+              {title ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="h-5 w-px bg-line"
+                  />
+                  <h1 className="truncate text-[13px] font-semibold uppercase tracking-[0.12em] text-brand">
+                    {title}
+                  </h1>
+                </>
+              ) : null}
+            </div>
+          ) : title ? (
             <h1 className="flex-1 truncate text-center text-[13px] font-semibold uppercase tracking-[0.12em] text-fg">
               {title}
             </h1>
@@ -66,7 +95,11 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-28 pt-4">
+      <main
+        className={`mx-auto w-full flex-1 px-4 pb-28 pt-4 ${
+          wide ? "max-w-5xl" : "max-w-4xl"
+        }`}
+      >
         {children}
       </main>
 

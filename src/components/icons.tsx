@@ -43,10 +43,13 @@ export const PawIcon = (p: IconProps) => (
 
 export const DogIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M4.5 5.5v5.2c0 4 3.1 7.3 7 7.3h1.8v3h6.2v-6.2c0-2.4-1.3-4.5-3.3-5.6" />
-    <path d="M4.5 5.5 8 8.6" />
-    <path d="M16.2 9.4V6.2l2.6-1.7v4.1" />
-    <circle cx="11.6" cy="9.4" r=".9" fill="currentColor" stroke="none" />
+    {/* Hundhuvud i framvy: hjässa, hängande öron, nos */}
+    <path d="M7.2 6.8C5.9 8.2 5.3 10.2 5.3 12.2c0 3.6 3 6.3 6.7 6.3s6.7-2.7 6.7-6.3c0-2-.6-4-1.9-5.4" />
+    <path d="M7.2 6.8 5.4 3.2l4.3 1.9" />
+    <path d="M16.8 6.8l1.8-3.6-4.3 1.9" />
+    <path d="M10.4 15.4c.5.5 1 .7 1.6.7s1.1-.2 1.6-.7" />
+    <circle cx="9.7" cy="11.4" r=".95" fill="currentColor" stroke="none" />
+    <circle cx="14.3" cy="11.4" r=".95" fill="currentColor" stroke="none" />
   </Icon>
 );
 

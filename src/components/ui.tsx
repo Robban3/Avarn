@@ -272,3 +272,162 @@ export function EmptyState({
     </div>
   );
 }
+
+/* ------------------------------------------------------- Instrumentpanel */
+
+/**
+ * Nyckeltal med ikon och jämförelse mot föregående period. Förändringen
+ * visas bara när det finns något att jämföra med.
+ */
+export function StatCard({
+  icon,
+  value,
+  label,
+  change,
+}: {
+  icon: ReactNode;
+  value: ReactNode;
+  label: string;
+  /** Förformaterad text, t.ex. "2 från förra månaden". */
+  change?: { text: string; direction: "up" | "down" | "flat" } | null;
+}) {
+  return (
+    <div className="card flex flex-col p-3.5">
+      <span className="mb-2.5 text-brand">{icon}</span>
+      <span className="text-2xl font-semibold leading-none text-fg">
+        {value}
+      </span>
+      <span className="mt-1.5 text-xs text-fg-muted">{label}</span>
+      {change ? (
+        <span
+          className={`mt-1.5 text-[11px] ${
+            change.direction === "down" ? "text-warn" : "text-brand"
+          }`}
+        >
+          {change.direction === "up"
+            ? "▲ "
+            : change.direction === "down"
+              ? "▼ "
+              : ""}
+          {change.text}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** Liten pill med punkt, t.ex. "Tillgänglig". */
+export function StatusPill({
+  children,
+  tone = "brand",
+}: {
+  children: ReactNode;
+  tone?: "brand" | "warn" | "neutral";
+}) {
+  const dot =
+    tone === "brand"
+      ? "bg-brand"
+      : tone === "warn"
+        ? "bg-warn"
+        : "bg-fg-dim";
+  const text =
+    tone === "brand"
+      ? "text-brand"
+      : tone === "warn"
+        ? "text-warn"
+        : "text-fg-muted";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-xs ${text}`}
+    >
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      {children}
+    </span>
+  );
+}
+
+/** Ikon över etikett och värde – raden under senaste träningen. */
+export function IconStat({
+  icon,
+  label,
+  value,
+  highlight = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1.5 px-1 text-center">
+      <span className="text-fg-dim">{icon}</span>
+      <span className="text-[11px] text-fg-muted">{label}</span>
+      <span
+        className={`text-sm font-medium ${highlight ? "text-brand" : "text-fg"}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/** Rund bild med turkos ring – används för förare och hundar. */
+export function PhotoCircle({
+  name,
+  photoUrl,
+  size = 48,
+  ring = true,
+}: {
+  name: string;
+  photoUrl?: string | null;
+  size?: number;
+  ring?: boolean;
+}) {
+  const ringClass = ring
+    ? "ring-2 ring-brand/50 ring-offset-2 ring-offset-bg"
+    : "";
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt=""
+        style={{ width: size, height: size }}
+        className={`shrink-0 rounded-full object-cover ${ringClass}`}
+      />
+    );
+  }
+  // Utan foto visas initialerna mot en mjuk turkos toning, så att ytan ser
+  // avsiktlig ut i stället för tom.
+  return (
+    <span
+      aria-hidden
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.34) }}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand/25 to-surface-3 font-semibold text-brand ${ringClass}`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+/** Kortrubrik med "Visa alla" till höger, för korten på instrumentpanelen. */
+export function CardHeader({
+  title,
+  href,
+  linkLabel = "Visa alla",
+}: {
+  title: string;
+  href?: string;
+  linkLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
+      <h2 className="section-label">{title}</h2>
+      {href ? (
+        <Link href={href} className="text-xs font-medium text-brand">
+          {linkLabel}
+        </Link>
+      ) : null}
+    </div>
+  );
+}

@@ -20,6 +20,9 @@ export type Action =
   | "team:viewOwn"
   | "team:viewOthers"
   | "dog:manage"
+  // Hundföraren får registrera en ny hund åt sig själv, men inte ändra
+  // andras. Registreringen skapar hund och ekipage i förarens egen region.
+  | "dog:create"
   // Träning
   | "session:create"
   | "session:approve"
@@ -41,6 +44,7 @@ export type Action =
 const CAPABILITIES: Record<Role, Action[]> = {
   HANDLER: [
     "team:viewOwn",
+    "dog:create",
     "session:create",
     "mission:respond",
     "report:create",
@@ -59,6 +63,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "team:viewOwn",
     "team:viewOthers",
     "dog:manage",
+    "dog:create",
     "session:approve",
     "plan:manage",
     "followUp:create",
@@ -73,6 +78,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "team:viewOwn",
     "team:viewOthers",
     "dog:manage",
+    "dog:create",
     "session:approve",
     "plan:manage",
     "followUp:create",
@@ -87,6 +93,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "team:viewOwn",
     "team:viewOthers",
     "dog:manage",
+    "dog:create",
     "session:approve",
     "plan:manage",
     "followUp:create",

@@ -32,24 +32,43 @@ export function monthsBack(count: number, from = new Date()) {
   return months;
 }
 
-/** Nyckeltal för de ekipage användaren ser. */
-export async function overviewStats(user: SessionUser, since = startOfMonth()) {
+/** Början på föregående månad. */
+export function startOfPreviousMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth() - 1, 1);
+}
+
+/**
+ * Nyckeltal för de ekipage användaren ser, inom ett tidsspann.
+ * `to` utelämnas för "från och med `from` och framåt".
+ */
+export async function periodStats(
+  user: SessionUser,
+  from: Date,
+  to?: Date,
+) {
   const scope = teamScope(user);
   const teamIds = (
     await db.team.findMany({ where: scope, select: { id: true } })
   ).map((t) => t.id);
 
+  const period = to ? { gte: from, lt: to } : { gte: from };
+
   const [teamCount, sessions, missionCount, openFollowUps] = await Promise.all([
     db.team.count({ where: { ...scope, status: "ACTIVE" } }),
     db.trainingSession.findMany({
-      where: { team: scope, startAt: { gte: since } },
-      select: { startAt: true, endAt: true },
+      where: { team: scope, startAt: period },
+      select: {
+        startAt: true,
+        endAt: true,
+        hideCount: true,
+        foundCount: true,
+      },
     }),
     db.missionAssignment.count({
       where: {
         teamId: { in: teamIds },
         status: { in: ["ACCEPTED", "COMPLETED"] },
-        mission: { startAt: { gte: since } },
+        mission: { startAt: period },
       },
     }),
     db.followUp.count({ where: { team: scope, status: "OPEN" } }),
@@ -60,13 +79,24 @@ export async function overviewStats(user: SessionUser, since = startOfMonth()) {
     0,
   );
 
+  // Genomförandegrad: hur stor andel av gömmorna som markerades.
+  const hides = sessions.reduce((sum, s) => sum + s.hideCount, 0);
+  const found = sessions.reduce((sum, s) => sum + s.foundCount, 0);
+
   return {
     teamCount,
     missionCount,
     trainingHours: Math.round(trainingMinutes / 60),
     sessionCount: sessions.length,
     openFollowUps,
+    /** null när inga gömmor registrerats – då finns inget att beräkna. */
+    completionRate: hides === 0 ? null : Math.round((found / hides) * 100),
   };
+}
+
+/** Nyckeltal för innevarande månad. Används av instruktörs- och ledningsvyn. */
+export async function overviewStats(user: SessionUser, since = startOfMonth()) {
+  return periodStats(user, since);
 }
 
 /** Träningstimmar per månad, för stapeldiagrammet i ledningsvyn. */
