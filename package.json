@@ -16,7 +16,8 @@
     "seed": "tsx prisma/seed.ts",
     "setup": "node scripts/setup-env.mjs",
     "test:e2e": "playwright test",
-    "db:setup": "prisma migrate deploy && prisma generate && npm run seed"
+    "db:setup": "prisma migrate deploy && prisma generate && npm run seed",
+    "db:sql": "node scripts/generate-supabase-sql.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -43,6 +43,38 @@ npm run db:setup  # skapar tabellerna och lägger in exempeldata
 npm run dev       # http://localhost:3000
 ```
 
+### Alternativ: skapa tabellerna direkt i Supabase
+
+Går det inte att köra `db:setup` – eller vill du bara få igång databasen
+utan att installera något – finns hela uppsättningen som en färdig SQL-fil:
+
+1. Öppna **SQL Editor → New query** i Supabase.
+2. Klistra in hela `prisma/supabase-setup.sql` och kör.
+
+Filen skapar de 27 tabellerna, lägger in exempeldatan, slår på radsäkerhet
+och markerar migreringen som körd, så att ett senare `prisma migrate deploy`
+blir en tom operation. Databaslösenordet lämnar aldrig din dator den här
+vägen — klistra aldrig in anslutningssträngen i en chatt.
+
+Filen genereras om med `npm run db:sql` efter en schemaändring; den skrivs
+aldrig för hand.
+
+### Radsäkerhet i Supabase
+
+Supabase publicerar schemat `public` genom sitt REST-API, och `anon`-nyckeln
+är gjord för att ligga öppet i en webbklient. Tabeller som skapas via SQL får
+radsäkerhet avstängd som standard — utan åtgärd skulle vem som helst med den
+nyckeln kunna läsa operativa rapporter, markeringar och fynd.
+
+Därför slås radsäkerhet på för samtliga tabeller, utan policyer: `anon` och
+`authenticated` nekas allt. Appen påverkas inte, eftersom den ansluter som
+rollen `postgres` som äger tabellerna. Behörigheten mellan roller styrs i
+appen, i `src/lib/authz.ts`.
+
+Skapar du tabellerna med `npm run db:setup` i stället för SQL-filen behöver
+du slå på radsäkerheten själv — kör då raderna längst ner i
+`prisma/supabase-setup.sql`.
+
 `npm run setup` rör inte en befintlig `.env`. `.env.example` visar formatet på
 adresserna.
 
@@ -106,6 +138,7 @@ npm run typecheck  # TypeScript
 npm run test       # Vitest – behörighetslogik och domänregler
 npm run test:e2e   # Playwright – rökprov och åtkomstkontroller
 npm run db:migrate # ny migrering efter schemaändring
+npm run db:sql     # genererar om prisma/supabase-setup.sql
 npm run seed       # lägger in exempeldata på nytt
 npm run db:studio  # Prisma Studio
 ```
