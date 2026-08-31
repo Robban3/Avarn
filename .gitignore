@@ -43,11 +43,6 @@ yarn-error.log*
 next-env.d.ts
 
 # Avarn
-# Utvecklingsdatabasen skapas av "prisma migrate dev" och hör inte hemma i repot.
-/dev.db
-/dev.db-journal
-/prisma/dev.db
-/prisma/dev.db-journal
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 /src/generated

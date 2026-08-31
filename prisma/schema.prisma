@@ -4,8 +4,9 @@
 // och certifikat hänger på ekipaget, vilket gör behörighetsfiltreringen till
 // en enda återanvändbar fråga (se src/lib/authz.ts).
 //
-// Statusfält och typer lagras som String eftersom SQLite inte stöder enum.
-// De tillåtna värdena definieras i src/lib/domain.ts och valideras med Zod.
+// Statusfält och typer lagras som String i stället för enum, så att nya
+// värden kan läggas till utan migrering. De tillåtna värdena definieras i
+// src/lib/domain.ts och valideras med Zod innan de skrivs.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,7 +14,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ---------------------------------------------------------------- Organisation

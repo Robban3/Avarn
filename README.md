@@ -21,14 +21,30 @@ Avarns grafiska profil.
 
 ## Kom igång
 
+Appen kör mot PostgreSQL. Använd ett Supabase-projekt eller en egen Postgres.
+
 ```bash
 npm install
-npm run setup               # skapar .env, migrerar databasen och lägger in exempeldata
-npm run dev                 # http://localhost:3000
+npm run setup     # skapar .env med slumpade hemligheter
 ```
 
-`npm run setup` skapar en `.env` med slumpade hemligheter om filen saknas, och
-låter en befintlig vara. `.env.example` visar vilka variabler som finns.
+Öppna sedan `.env` och fyll i de två databasadresserna. I Supabase finns de
+under **Project Settings → Database → Connection string**:
+
+| Variabel | Vilken anslutning | Varför |
+| --- | --- | --- |
+| `DATABASE_URL` | Transaction pooler, port 6543 | Appens anslutning. Poolaren klarar många korta anslutningar. |
+| `DIRECT_URL` | Direct connection, port 5432 | Migreringar. Poolaren släpper inte igenom schemaändringar. |
+
+Kör du en egen Postgres kan båda peka på samma adress. Därefter:
+
+```bash
+npm run db:setup  # skapar tabellerna och lägger in exempeldata
+npm run dev       # http://localhost:3000
+```
+
+`npm run setup` rör inte en befintlig `.env`. `.env.example` visar formatet på
+adresserna.
 
 Kör alltid `npm install` först. Utan installerade beroenden hämtar `npx` den
 senaste Prisma-versionen från nätet i stället för projektets, vilket ger fel
@@ -89,6 +105,8 @@ npm run lint       # ESLint
 npm run typecheck  # TypeScript
 npm run test       # Vitest – behörighetslogik och domänregler
 npm run test:e2e   # Playwright – rökprov och åtkomstkontroller
+npm run db:migrate # ny migrering efter schemaändring
+npm run seed       # lägger in exempeldata på nytt
 npm run db:studio  # Prisma Studio
 ```
 
@@ -96,15 +114,22 @@ npm run db:studio  # Prisma Studio
 
 ### Teknik
 
-Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Prisma 7 med
-SQLite i utveckling. Inloggningen är en signerad cookie (JWT via `jose`) med
+Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Prisma 7 mot
+PostgreSQL. Inloggningen är en signerad cookie (JWT via `jose`) med
 bcrypt-hashade lösenord; formulär går genom Server Actions med Zod-validering.
 
-### Byta till Postgres
+### Databasen
 
-Ändra `provider` till `postgresql` i `prisma/schema.prisma`, peka
-`DATABASE_URL` mot databasen och byt drivrutinsadaptern i `src/lib/db.ts`
-till `@prisma/adapter-pg`. Övrig kod är oförändrad.
+PostgreSQL via Prisma med `@prisma/adapter-pg`. Appen ansluter genom adaptern
+i `src/lib/db.ts`, medan Prisma-CLI:t (migreringar, studio) läser sin
+anslutning ur `prisma.config.ts` och använder `DIRECT_URL`.
+
+Statusfält lagras som `String` i stället för `enum`, så att nya värden kan
+läggas till utan migrering. De tillåtna värdena definieras i
+`src/lib/domain.ts` och valideras med Zod innan de skrivs.
+
+Efter en schemaändring: `npm run db:migrate` skapar och applicerar en ny
+migrering lokalt, `npx prisma migrate deploy` applicerar den i drift.
 
 ### Grafisk profil
 

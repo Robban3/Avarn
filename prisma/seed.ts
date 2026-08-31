@@ -9,14 +9,20 @@
  * Kör med: npm run seed
  */
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma";
 
+// Seed skriver mycket på kort tid och använder därför direktanslutningen
+// när en sådan är angiven, i stället för Supabase poolare.
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("DATABASE_URL saknas. Peka den mot din databas i .env.");
+  process.exit(1);
+}
+
 const db = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL ?? "file:./dev.db",
-  }),
+  adapter: new PrismaPg({ connectionString }),
 });
 
 /** Alla konton i seed-datan delar lösenord för att testningen ska gå snabbt. */
