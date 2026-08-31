@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,7 +14,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
-    "setup": "node scripts/setup-env.mjs && prisma migrate dev --name init && npm run seed",
+    "setup": "node scripts/setup-env.mjs && prisma generate && prisma migrate dev --name init && npm run seed",
     "test:e2e": "playwright test"
   },
   "prisma": {
