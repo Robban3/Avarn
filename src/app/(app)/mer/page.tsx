@@ -7,6 +7,7 @@ import {
   ChartIcon,
   ChevronRightIcon,
   ClipboardIcon,
+  GridIcon,
   LogoutIcon,
   MessageIcon,
   SettingsIcon,
@@ -46,6 +47,16 @@ export default async function MorePage() {
       label: "Operativa rapporter",
       Icon: ClipboardIcon,
       show: true,
+    },
+    {
+      // Adminpanelen är en skrivbordsvy; posten visas för alla som når den.
+      href: "/panel",
+      label: "Adminpanel",
+      Icon: GridIcon,
+      show:
+        can(user, "instructor:view") ||
+        can(user, "stats:view") ||
+        can(user, "admin:manage"),
     },
     {
       href: "/instruktor",

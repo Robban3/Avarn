@@ -195,3 +195,27 @@ export const MISSION_TYPES = [
 
 /** Antal dagar före utgång då ett certifikat räknas som "snart utgånget". */
 export const CERT_WARNING_DAYS = 60;
+
+/**
+ * Perioderna i adminpanelens datumväljare. Ligger här och inte i panel.ts
+ * eftersom väljaren är en klientkomponent – panel.ts är serveronly.
+ */
+export const PERIODER = {
+  "30d": { label: "Senaste 30 dagarna", days: 30 },
+  "3m": { label: "Senaste 3 månaderna", days: 92 },
+  "12m": { label: "Senaste 12 månaderna", days: 365 },
+} as const;
+
+export type PeriodKey = keyof typeof PERIODER;
+
+/**
+ * Vilket certifikat en sökinriktning kräver för skarpt uppdrag. Nyckeln är
+ * sökinriktningens kod, värdet certifikattypens kod.
+ */
+export const DISCIPLINE_CERT: Record<string, string> = {
+  NARKOTIKA: "NARK_CERT",
+  SPRANG: "SPRANG_CERT",
+};
+
+/** Certifikat som varje ekipage måste ha giltigt för att få tas ut. */
+export const TEAM_REQUIRED_CERTS = ["NHPR", "EKIPAGE"];

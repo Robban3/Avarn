@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { getSessionUser, type SessionUser } from "./session";
-import { assertCan, type Action } from "./authz";
+import { assertCan, can, type Action } from "./authz";
 
 /**
  * Serverfunktioner som varje skyddad sida och server action börjar med.
@@ -24,6 +24,21 @@ export async function requireCapability(action: Action): Promise<SessionUser> {
   } catch {
     redirect("/nekad");
   }
+  return user;
+}
+
+/**
+ * Kräver behörighet till adminpanelen. Instruktör, regionalt och nationellt
+ * ansvarig samt administratör kommer in – hundföraren har mobilappen och
+ * skickas till nekad-sidan.
+ */
+export async function requirePanelUser(): Promise<SessionUser> {
+  const user = await requireUser();
+  const slapps =
+    can(user, "instructor:view") ||
+    can(user, "stats:view") ||
+    can(user, "admin:manage");
+  if (!slapps) redirect("/nekad");
   return user;
 }
 

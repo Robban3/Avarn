@@ -358,3 +358,49 @@ export const SexIcon = (p: IconProps) => (
     <path d="M12 14v6M9.4 17.4h5.2" />
   </Icon>
 );
+
+/* ------------------------------------------------- Ikoner för adminpanelen */
+
+export const GridIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="4" width="7" height="7" rx="1.5" />
+    <rect x="4" y="13" width="7" height="7" rx="1.5" />
+    <rect x="13" y="13" width="7" height="7" rx="1.5" />
+  </Icon>
+);
+
+export const BuildingIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h16" />
+    <path d="M6 20V5.5A1.5 1.5 0 0 1 7.5 4h5A1.5 1.5 0 0 1 14 5.5V20" />
+    <path d="M14 20V10h3.5A1.5 1.5 0 0 1 19 11.5V20" />
+    <path d="M8.5 8h3M8.5 11.5h3M8.5 15h3" />
+  </Icon>
+);
+
+export const HandshakeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3.5 11.5 7 8h4l2 1.75L11 11.5 9 10" />
+    <path d="M20.5 11.5 17 8h-3.5" />
+    <path d="m13 12 2.5 2.5M11 14l2 2M9 16l1.5 1.5" />
+    <path d="M3.5 11.5 6 14M20.5 11.5 18 14" />
+  </Icon>
+);
+
+export const DownloadIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 4v10" />
+    <path d="m8 10.5 4 4 4-4" />
+    <path d="M4.5 18.5h15" />
+  </Icon>
+);
+
+/** Tre lodräta punkter – radmenyn i tabellerna. */
+export const KebabIcon = (p: IconProps) => (
+  <Icon {...p} strokeWidth={2}>
+    <circle cx="12" cy="5.5" r=".6" fill="currentColor" />
+    <circle cx="12" cy="12" r=".6" fill="currentColor" />
+    <circle cx="12" cy="18.5" r=".6" fill="currentColor" />
+  </Icon>
+);

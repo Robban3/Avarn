@@ -213,3 +213,13 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Diagrammens hovringslager: hårkors och värde visas utan skript */
+.viz-band .viz-hover {
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+.viz-band:hover .viz-hover {
+  opacity: 1;
+}
