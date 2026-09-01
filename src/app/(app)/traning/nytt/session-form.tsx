@@ -2,15 +2,36 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { createSession, type SessionFormState } from "../actions";
+import type { SessionFormState } from "../actions";
 
 type Option = { id: string; label: string };
 
+/** Värdena i ett befintligt pass, när formuläret används för redigering. */
+export type SessionInitial = {
+  sessionId: string;
+  teamId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  trainingArea: string;
+  environment: string;
+  targetOdor: string;
+  disciplineId: string;
+  hideCount: number;
+  foundCount: number;
+  comment: string;
+};
+
 /**
  * Snabbrapportering: så få fält som möjligt, med förifyllda listor för de
- * val som återkommer. Datum och tid är förifyllda med dagens pass.
+ * val som återkommer. Samma formulär används för nytt pass och för att rätta
+ * ett befintligt – skillnaden är vilken action som tar emot det och om
+ * `initial` är satt.
  */
 export function SessionForm({
+  action,
+  initial,
   teams,
   disciplines,
   trainingAreas,
@@ -19,6 +40,11 @@ export function SessionForm({
   plannedExercises,
   defaults,
 }: {
+  action: (
+    prev: SessionFormState,
+    formData: FormData,
+  ) => Promise<SessionFormState>;
+  initial?: SessionInitial;
   teams: Option[];
   disciplines: Option[];
   trainingAreas: string[];
@@ -35,16 +61,20 @@ export function SessionForm({
   defaults: { date: string; startTime: string; endTime: string };
 }) {
   const [state, formAction] = useActionState<SessionFormState, FormData>(
-    createSession,
+    action,
     {},
   );
-  const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
+  const [teamId, setTeamId] = useState(initial?.teamId ?? teams[0]?.id ?? "");
   const [exerciseId, setExerciseId] = useState("");
-  const [environment, setEnvironment] = useState(environments[0] ?? "");
-  const [targetOdor, setTargetOdor] = useState(targetOdors[0] ?? "");
-  const [disciplineId, setDisciplineId] = useState("");
-  const [hideCount, setHideCount] = useState(5);
-  const [foundCount, setFoundCount] = useState(5);
+  const [environment, setEnvironment] = useState(
+    initial?.environment ?? environments[0] ?? "",
+  );
+  const [targetOdor, setTargetOdor] = useState(
+    initial?.targetOdor ?? targetOdors[0] ?? "",
+  );
+  const [disciplineId, setDisciplineId] = useState(initial?.disciplineId ?? "");
+  const [hideCount, setHideCount] = useState(initial?.hideCount ?? 5);
+  const [foundCount, setFoundCount] = useState(initial?.foundCount ?? 5);
 
   const exercisesForTeam = plannedExercises.filter((e) => e.teamId === teamId);
 
@@ -61,6 +91,10 @@ export function SessionForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      {initial ? (
+        <input type="hidden" name="sessionId" value={initial.sessionId} />
+      ) : null}
+
       {/* Ekipage och planerad övning */}
       <fieldset className="card space-y-3.5 p-4">
         <legend className="section-label px-1">Ekipage</legend>
@@ -124,7 +158,7 @@ export function SessionForm({
             name="date"
             type="date"
             required
-            defaultValue={defaults.date}
+            defaultValue={initial?.date ?? defaults.date}
             className="field"
           />
         </div>
@@ -139,7 +173,7 @@ export function SessionForm({
               name="startTime"
               type="time"
               required
-              defaultValue={defaults.startTime}
+              defaultValue={initial?.startTime ?? defaults.startTime}
               className="field"
             />
           </div>
@@ -151,7 +185,7 @@ export function SessionForm({
               id="endTime"
               name="endTime"
               type="time"
-              defaultValue={defaults.endTime}
+              defaultValue={initial?.endTime ?? defaults.endTime}
               className="field"
             />
           </div>
@@ -165,6 +199,7 @@ export function SessionForm({
             id="location"
             name="location"
             required
+            defaultValue={initial?.location ?? ""}
             placeholder="t.ex. Tyresta, Stockholm"
             className="field"
           />
@@ -184,7 +219,7 @@ export function SessionForm({
             name="trainingArea"
             required
             list="trainingAreas"
-            defaultValue={trainingAreas[0]}
+            defaultValue={initial?.trainingArea ?? trainingAreas[0]}
             className="field"
           />
           <datalist id="trainingAreas">
@@ -311,6 +346,7 @@ export function SessionForm({
             id="comment"
             name="comment"
             rows={4}
+            defaultValue={initial?.comment ?? ""}
             placeholder="Hur gick passet? Vad ska följas upp?"
             className="field resize-y"
           />
@@ -336,7 +372,9 @@ export function SessionForm({
       </div>
 
       <p className="pb-2 text-center text-xs text-fg-dim">
-        Bilder och filmer läggs till när passet är sparat.
+        {initial
+          ? "Bilder och filmer läggs till på passets sida."
+          : "Bilder och filmer läggs till när passet är sparat."}
       </p>
     </form>
   );

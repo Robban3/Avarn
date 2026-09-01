@@ -289,3 +289,72 @@ export const UserIcon = (p: IconProps) => (
     <path d="M4.8 20.2c0-3.6 3.2-6 7.2-6s7.2 2.4 7.2 6" />
   </Icon>
 );
+
+export const PencilIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h4.2L19 9.2a2.1 2.1 0 0 0 0-3l-1.2-1.2a2.1 2.1 0 0 0-3 0L4 15.8V20Z" />
+    <path d="M13.8 6.2 17.8 10.2" />
+  </Icon>
+);
+
+export const ChipIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="7.5" y="7.5" width="9" height="9" rx="1.6" />
+    <path d="M10 4.5v3M14 4.5v3M10 16.5v3M14 16.5v3M4.5 10h3M4.5 14h3M16.5 10h3M16.5 14h3" />
+  </Icon>
+);
+
+export const ScaleIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 8.5h12l1.5 11.5h-15L6 8.5Z" />
+    <path d="M9.5 8.5a2.5 2.5 0 0 1 5 0" />
+  </Icon>
+);
+
+export const HeightIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 20V11M12 20V6M18 20v-6" />
+  </Icon>
+);
+
+export const PaletteIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3.5c-4.7 0-8.5 3.5-8.5 8 0 3 2.2 4.6 4.4 4.6 1.4 0 2-.7 2-1.6 0-1.6 1.3-2.4 3-2.4h1.6c3 0 6-1.4 6-4.1 0-2.7-3.4-4.5-8.5-4.5Z" />
+    <circle cx="8.4" cy="9.4" r=".95" fill="currentColor" stroke="none" />
+    <circle cx="12.4" cy="7.6" r=".95" fill="currentColor" stroke="none" />
+  </Icon>
+);
+
+export const PlusCircleIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 8.6v6.8M8.6 12h6.8" />
+  </Icon>
+);
+
+export const XCircleIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M9.5 9.5l5 5M14.5 9.5l-5 5" />
+  </Icon>
+);
+
+export const FolderIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3.5 6.5h5.6l1.8 2.2h9.6V19H3.5V6.5Z" />
+  </Icon>
+);
+
+export const GraduationIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 4.5 21 9l-9 4.5L3 9l9-4.5Z" />
+    <path d="M6.8 11v4.6c0 1.5 2.3 2.7 5.2 2.7s5.2-1.2 5.2-2.7V11" />
+  </Icon>
+);
+
+export const SexIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="9.5" r="4.5" />
+    <path d="M12 14v6M9.4 17.4h5.2" />
+  </Icon>
+);

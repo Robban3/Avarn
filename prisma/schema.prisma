@@ -91,6 +91,21 @@ model Dog {
   notes      String?
   createdAt  DateTime  @default(now())
 
+  // Registrering och försäkring
+  registrationNumber String?
+  insurer            String?
+  insuranceValidTo   DateTime?
+
+  // Nyckelinformation om hunden. Frivilliga uppgifter som förs in efter
+  // hand; visas på hundprofilen när de är ifyllda.
+  weightKg     Float?
+  heightCm     Int?
+  color        String?
+  hipsElbows   String? // HD/ED, t.ex. "A / 0"
+  mentalIndex  String? // Mentalbeskrivning, t.ex. "5 / 5"
+  originCountry String?
+  neutered     Boolean?
+
   teams          Team[]
   disciplines    DogDiscipline[]
   educations     DogEducation[]

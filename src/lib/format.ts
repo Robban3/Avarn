@@ -101,6 +101,11 @@ export function durationMinutes(start: Date, end?: Date | null) {
   return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60_000));
 }
 
+/** Tal i svenskt format, t.ex. 29.5 → "29,5". */
+export function formatNumber(value: number, maxDecimals = 1) {
+  return value.toLocaleString("sv-SE", { maximumFractionDigits: maxDecimals });
+}
+
 /** Initialer för platshållaravatarer, t.ex. "Erik Andersson" → "EA". */
 export function initials(name: string) {
   return name

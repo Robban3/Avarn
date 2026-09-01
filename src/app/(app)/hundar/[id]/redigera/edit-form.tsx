@@ -27,6 +27,16 @@ type Dog = {
   notes: string | null;
   photoUrl: string | null;
   disciplineIds: string[];
+  registrationNumber: string;
+  insurer: string;
+  insuranceValidTo: string;
+  weightKg: string;
+  heightCm: string;
+  color: string;
+  hipsElbows: string;
+  mentalIndex: string;
+  originCountry: string;
+  neutered: string;
 };
 
 export function EditDogForm({
@@ -192,6 +202,153 @@ export function EditDogForm({
               defaultValue={dog.notes ?? ""}
               className="field resize-y"
             />
+          </div>
+        </fieldset>
+
+        <fieldset className="card space-y-3.5 p-4">
+          <legend className="section-label px-1">Registrering och försäkring</legend>
+
+          <div>
+            <label className="field-label" htmlFor="registrationNumber">
+              Reg.nummer
+            </label>
+            <input
+              id="registrationNumber"
+              name="registrationNumber"
+              defaultValue={dog.registrationNumber}
+              placeholder="t.ex. SE-AVAR-2020-1127"
+              className="field"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="insurer">
+                Försäkringsbolag
+              </label>
+              <input
+                id="insurer"
+                name="insurer"
+                defaultValue={dog.insurer}
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="insuranceValidTo">
+                Giltig t.o.m.
+              </label>
+              <input
+                id="insuranceValidTo"
+                name="insuranceValidTo"
+                type="date"
+                defaultValue={dog.insuranceValidTo}
+                className="field"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="card space-y-3.5 p-4">
+          <legend className="section-label px-1">Nyckelinformation</legend>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="weightKg">
+                Vikt (kg)
+              </label>
+              <input
+                id="weightKg"
+                name="weightKg"
+                type="number"
+                min={0}
+                step="0.1"
+                defaultValue={dog.weightKg}
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="heightCm">
+                Höjd (cm)
+              </label>
+              <input
+                id="heightCm"
+                name="heightCm"
+                type="number"
+                min={0}
+                defaultValue={dog.heightCm}
+                className="field"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="color">
+              Färg
+            </label>
+            <input
+              id="color"
+              name="color"
+              defaultValue={dog.color}
+              placeholder="t.ex. Fawn med svart mask"
+              className="field"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="hipsElbows">
+                HD / ED
+              </label>
+              <input
+                id="hipsElbows"
+                name="hipsElbows"
+                defaultValue={dog.hipsElbows}
+                placeholder="t.ex. A / 0"
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="mentalIndex">
+                Mentalindex (MH)
+              </label>
+              <input
+                id="mentalIndex"
+                name="mentalIndex"
+                defaultValue={dog.mentalIndex}
+                placeholder="t.ex. 5 / 5"
+                className="field"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="originCountry">
+                Import
+              </label>
+              <input
+                id="originCountry"
+                name="originCountry"
+                defaultValue={dog.originCountry}
+                placeholder="Ursprungsland"
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="neutered">
+                Kastrerad
+              </label>
+              <select
+                id="neutered"
+                name="neutered"
+                defaultValue={dog.neutered}
+                className="field"
+              >
+                <option value="">Ej angivet</option>
+                <option value="ja">Ja</option>
+                <option value="nej">Nej</option>
+              </select>
+            </div>
           </div>
         </fieldset>
 

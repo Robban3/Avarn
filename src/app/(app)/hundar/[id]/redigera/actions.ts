@@ -21,7 +21,30 @@ const editSchema = z.object({
   status: z.enum(["ACTIVE", "RESTING", "RETIRED"]),
   notes: z.string().trim().max(2000).optional(),
   disciplineIds: z.string().optional(),
+
+  // Uppgifter som visas på hundprofilen. Alla frivilliga – de förs in efter
+  // hand och tomma fält sparas som null i stället för tom sträng.
+  registrationNumber: z.string().trim().max(60).optional(),
+  insurer: z.string().trim().max(80).optional(),
+  insuranceValidTo: z.string().optional(),
+  weightKg: z.string().optional(),
+  heightCm: z.string().optional(),
+  color: z.string().trim().max(80).optional(),
+  hipsElbows: z.string().trim().max(20).optional(),
+  mentalIndex: z.string().trim().max(20).optional(),
+  originCountry: z.string().trim().max(60).optional(),
+  neutered: z.string().optional(),
 });
+
+/** Tom sträng betyder "inte angivet" och sparas som null. */
+const orNull = (v: string | undefined) => (v && v.trim() ? v.trim() : null);
+
+/** Tolkar ett talfält; ogiltigt eller tomt blir null. */
+function numberOrNull(value: string | undefined, integer = false) {
+  if (!value || !value.trim()) return null;
+  const parsed = integer ? Number.parseInt(value, 10) : Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
 
 export type EditDogState = { error?: string; ok?: string };
 
@@ -61,6 +84,13 @@ export async function updateDog(
     return { error: "Födelsedatumet kan inte ligga i framtiden." };
   }
 
+  const insuranceValidTo = data.insuranceValidTo
+    ? new Date(data.insuranceValidTo)
+    : null;
+  if (insuranceValidTo && Number.isNaN(insuranceValidTo.getTime())) {
+    return { error: "Ogiltigt datum för försäkringen." };
+  }
+
   const wanted = new Set(
     (data.disciplineIds ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   );
@@ -81,6 +111,17 @@ export async function updateDog(
         chipNumber: data.chipNumber || null,
         status: data.status,
         notes: data.notes || null,
+        registrationNumber: orNull(data.registrationNumber),
+        insurer: orNull(data.insurer),
+        insuranceValidTo,
+        weightKg: numberOrNull(data.weightKg),
+        heightCm: numberOrNull(data.heightCm, true),
+        color: orNull(data.color),
+        hipsElbows: orNull(data.hipsElbows),
+        mentalIndex: orNull(data.mentalIndex),
+        originCountry: orNull(data.originCountry),
+        neutered:
+          data.neutered === "ja" ? true : data.neutered === "nej" ? false : null,
       },
     }),
     // Inriktningar som tagits bort

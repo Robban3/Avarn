@@ -46,6 +46,22 @@ export default async function EditDogPage({
           notes: dog.notes,
           photoUrl: dog.photoUrl,
           disciplineIds: dog.disciplines.map((d) => d.disciplineId),
+          registrationNumber: dog.registrationNumber ?? "",
+          insurer: dog.insurer ?? "",
+          insuranceValidTo:
+            dog.insuranceValidTo?.toISOString().slice(0, 10) ?? "",
+          weightKg: dog.weightKg?.toString() ?? "",
+          heightCm: dog.heightCm?.toString() ?? "",
+          color: dog.color ?? "",
+          hipsElbows: dog.hipsElbows ?? "",
+          mentalIndex: dog.mentalIndex ?? "",
+          originCountry: dog.originCountry ?? "",
+          neutered:
+            dog.neutered === null || dog.neutered === undefined
+              ? ""
+              : dog.neutered
+                ? "ja"
+                : "nej",
         }}
         disciplines={disciplines.map((d) => ({ id: d.id, name: d.name }))}
       />

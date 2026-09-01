@@ -11,6 +11,7 @@ import {
   TRAINING_AREAS,
 } from "@/lib/domain";
 import { SessionForm } from "./session-form";
+import { createSession } from "../actions";
 
 export const metadata: Metadata = { title: "Nytt träningspass" };
 
@@ -79,6 +80,7 @@ export default async function NewSessionPage() {
       role={user.role}
     >
       <SessionForm
+        action={createSession}
         teams={teams.map((t) => ({
           id: t.id,
           label: `${t.dog.name} · ${t.handler.name}`,
