@@ -3,7 +3,12 @@
 --
 -- Klistra in hela den här filen i Supabase: SQL Editor > New query > Run.
 -- Filen skapar samtliga tabeller, lägger in exempeldata och slår på
--- radsäkerhet. Den är avsedd för en tom databas och körs en gång.
+-- radsäkerhet.
+--
+-- ENDAST FÖR EN TOM DATABAS. Har databasen redan tabellerna avbryts filen
+-- med "relation ... already exists". Kör då i stället filerna i
+-- prisma/supabase/, som applicerar en migrering i taget och är ofarliga att
+-- köra om.
 --
 -- Genererad av scripts/generate-supabase-sql.mjs – ändra inte här, utan i
 -- prisma/schema.prisma och prisma/seed.ts, och generera om.
@@ -458,6 +463,36 @@ CREATE TABLE public._prisma_migrations (
 -- Data for Name: AuditLog; Type: TABLE DATA; Schema: public; Owner: -
 --
 
+INSERT INTO public."AuditLog" VALUES ('cmtim55q3000cgv7d1w6c1uw5', 'cmtim3i06000j2m7dimg2alyk', 'LOGIN', 'User', 'cmtim3i06000j2m7dimg2alyk', NULL, '2026-09-01 11:58:01.275');
+INSERT INTO public."AuditLog" VALUES ('cmtim56ji000dgv7d0icadx8c', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:02.334');
+INSERT INTO public."AuditLog" VALUES ('cmtim580l000egv7d4g9nsxvn', 'cmtim3i06000j2m7dimg2alyk', 'LOGIN', 'User', 'cmtim3i06000j2m7dimg2alyk', NULL, '2026-09-01 11:58:04.245');
+INSERT INTO public."AuditLog" VALUES ('cmtim58qk000fgv7dzouyn11i', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:05.18');
+INSERT INTO public."AuditLog" VALUES ('cmtim59r1000ggv7da48zjzl1', 'cmtim3i0g000o2m7dhlh9w1ar', 'LOGIN', 'User', 'cmtim3i0g000o2m7dhlh9w1ar', NULL, '2026-09-01 11:58:06.493');
+INSERT INTO public."AuditLog" VALUES ('cmtim5ak2000hgv7d08paqcdy', 'cmtim3i0e000n2m7ds08y9fyi', 'LOGIN', 'User', 'cmtim3i0e000n2m7ds08y9fyi', NULL, '2026-09-01 11:58:07.538');
+INSERT INTO public."AuditLog" VALUES ('cmtim5c2i000igv7dsruavaw6', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:09.498');
+INSERT INTO public."AuditLog" VALUES ('cmtim5cai000jgv7dyhbisevd', 'cmtim3i00000h2m7dtebiy6zb', 'DENIED', 'MediaAsset', 'finns-inte', 'Försök att hämta fil utanför behörighet', '2026-09-01 11:58:09.786');
+INSERT INTO public."AuditLog" VALUES ('cmtim5cx3000kgv7dithzbe3s', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:10.599');
+INSERT INTO public."AuditLog" VALUES ('cmtim5dy6000lgv7dned2c9kh', 'cmtim3i0e000n2m7ds08y9fyi', 'LOGIN', 'User', 'cmtim3i0e000n2m7ds08y9fyi', NULL, '2026-09-01 11:58:11.934');
+INSERT INTO public."AuditLog" VALUES ('cmtim5f0d000mgv7dqtjebuq4', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:13.309');
+INSERT INTO public."AuditLog" VALUES ('cmtim5fmw000ngv7dpcx67uqe', 'cmtim3i00000h2m7dtebiy6zb', 'DENIED', 'User', 'cmtim3i00000h2m7dtebiy6zb', 'Fel nuvarande lösenord vid byte', '2026-09-01 11:58:14.12');
+INSERT INTO public."AuditLog" VALUES ('cmtim5g7q000ogv7dksi0s0e7', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:14.87');
+INSERT INTO public."AuditLog" VALUES ('cmtim5hkx000pgv7dwhasyhpg', 'cmtim3i06000j2m7dimg2alyk', 'LOGIN', 'User', 'cmtim3i06000j2m7dimg2alyk', NULL, '2026-09-01 11:58:16.641');
+INSERT INTO public."AuditLog" VALUES ('cmtim5ic0000qgv7dik8tokuz', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:17.616');
+INSERT INTO public."AuditLog" VALUES ('cmtim5jd2000rgv7dltlzg9km', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:18.95');
+INSERT INTO public."AuditLog" VALUES ('cmtim5ju4000sgv7dxalqvev1', 'cmtim3i00000h2m7dtebiy6zb', 'READ', 'TrainingSession', 'cmtim3i6o003w2m7dws4i7dso', NULL, '2026-09-01 11:58:19.564');
+INSERT INTO public."AuditLog" VALUES ('cmtim5k6o000ugv7daxbhn5kq', 'cmtim3i00000h2m7dtebiy6zb', 'READ', 'TrainingSession', 'cmtim3i6o003w2m7dws4i7dso', NULL, '2026-09-01 11:58:20.017');
+INSERT INTO public."AuditLog" VALUES ('cmtim5kly000vgv7daxue1gst', 'cmtim3i06000j2m7dimg2alyk', 'LOGIN', 'User', 'cmtim3i06000j2m7dimg2alyk', NULL, '2026-09-01 11:58:20.567');
+INSERT INTO public."AuditLog" VALUES ('cmtim5ktv000wgv7d6zgiu5ur', 'cmtim3i06000j2m7dimg2alyk', 'DENIED', 'MediaAsset', 'cmtim5k4z000tgv7dr3x8k5q6', 'Försök att hämta fil utanför behörighet', '2026-09-01 11:58:20.851');
+INSERT INTO public."AuditLog" VALUES ('cmtim5lps000xgv7d6ot5axr8', 'cmtim3i00000h2m7dtebiy6zb', 'DENIED', 'Login', NULL, 'Fel lösenord', '2026-09-01 11:58:22');
+INSERT INTO public."AuditLog" VALUES ('cmtim5m9r000ygv7dklhnm6b6', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:22.719');
+INSERT INTO public."AuditLog" VALUES ('cmtim5o7u000zgv7drjmsml5y', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:58:25.242');
+INSERT INTO public."AuditLog" VALUES ('cmtim5po00010gv7d58ioagf4', 'cmtim3i0e000n2m7ds08y9fyi', 'LOGIN', 'User', 'cmtim3i0e000n2m7ds08y9fyi', NULL, '2026-09-01 11:58:27.12');
+INSERT INTO public."AuditLog" VALUES ('cmtim5r360011gv7d2cqirjb2', 'cmtim3i0i000p2m7d6sj9j0qz', 'LOGIN', 'User', 'cmtim3i0i000p2m7d6sj9j0qz', NULL, '2026-09-01 11:58:28.962');
+INSERT INTO public."AuditLog" VALUES ('cmtim5sdd0012gv7dvzq5yezs', 'cmtim3i0q000r2m7dzd23f518', 'LOGIN', 'User', 'cmtim3i0q000r2m7dzd23f518', NULL, '2026-09-01 11:58:30.625');
+INSERT INTO public."AuditLog" VALUES ('cmtim5tcr0013gv7doksco4qw', 'cmtim3i0m000q2m7d9hs7ruus', 'LOGIN', 'User', 'cmtim3i0m000q2m7d9hs7ruus', NULL, '2026-09-01 11:58:31.9');
+INSERT INTO public."AuditLog" VALUES ('cmtim7jhj0014gv7deg5nn6fo', 'cmtim3i0e000n2m7ds08y9fyi', 'LOGIN', 'User', 'cmtim3i0e000n2m7ds08y9fyi', NULL, '2026-09-01 11:59:52.423');
+INSERT INTO public."AuditLog" VALUES ('cmtim7m3x0015gv7dl6kkhu7h', 'cmtim3i00000h2m7dtebiy6zb', 'LOGIN', 'User', 'cmtim3i00000h2m7dtebiy6zb', NULL, '2026-09-01 11:59:55.821');
+
 --
 -- Data for Name: Certification; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -660,6 +695,8 @@ INSERT INTO public."InstructorAssignment" VALUES ('cmtim3i3n002d2m7ds3c01tc1', '
 -- Data for Name: MediaAsset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
+INSERT INTO public."MediaAsset" VALUES ('cmtim5k4z000tgv7dr3x8k5q6', 'IMAGE', 'testbild.png', 'f39542ec-baa8-433c-a476-55956378bb76.png', 'image/png', 88, 'cmtim3i00000h2m7dtebiy6zb', '2026-09-01 11:58:19.955', 'cmtim3i6o003w2m7dws4i7dso', NULL, NULL, NULL, NULL);
+
 --
 -- Data for Name: Mission; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -861,17 +898,17 @@ INSERT INTO public."TrainingSession" VALUES ('cmtim3icc00722m7d8zw8zpzk', 'cmtim
 -- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public."User" VALUES ('cmtim3i00000h2m7dtebiy6zb', 'erik.andersson@avarn.se', 'Erik Andersson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-123 45 67', true, NULL, '2026-09-01 11:56:43.872', 'cmtim3hyv00022m7dicbkhjtu');
+INSERT INTO public."User" VALUES ('cmtim3i0g000o2m7dhlh9w1ar', 'peter.nyman@avarn.se', 'Peter Nyman', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'INSTRUCTOR', '070-890 12 34', true, '2026-09-01 11:58:06.489', '2026-09-01 11:56:43.888', 'cmtim3hyy00032m7dgu1ctwz4');
 INSERT INTO public."User" VALUES ('cmtim3i04000i2m7d6zz9qkt7', 'maria.svensson@avarn.se', 'Maria Svensson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-234 56 78', true, NULL, '2026-09-01 11:56:43.876', 'cmtim3hyv00022m7dicbkhjtu');
-INSERT INTO public."User" VALUES ('cmtim3i06000j2m7dimg2alyk', 'johan.larsson@avarn.se', 'Johan Larsson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-345 67 89', true, NULL, '2026-09-01 11:56:43.878', 'cmtim3hyy00032m7dgu1ctwz4');
 INSERT INTO public."User" VALUES ('cmtim3i08000k2m7dpmyknu78', 'sofie.holm@avarn.se', 'Sofie Holm', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-456 78 90', true, NULL, '2026-09-01 11:56:43.88', 'cmtim3hyz00042m7dqcgwkrvy');
 INSERT INTO public."User" VALUES ('cmtim3i0a000l2m7dgpss565s', 'anders.berg@avarn.se', 'Anders Berg', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-567 89 01', true, NULL, '2026-09-01 11:56:43.882', 'cmtim3hyn00002m7dbp3pxgbd');
 INSERT INTO public."User" VALUES ('cmtim3i0c000m2m7di7i3fk3t', 'lisa.ek@avarn.se', 'Lisa Ek', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-678 90 12', true, NULL, '2026-09-01 11:56:43.884', 'cmtim3hyt00012m7d31rwdmgk');
-INSERT INTO public."User" VALUES ('cmtim3i0e000n2m7ds08y9fyi', 'anna.karlsson@avarn.se', 'Anna Karlsson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'INSTRUCTOR', '070-789 01 23', true, NULL, '2026-09-01 11:56:43.886', 'cmtim3hyv00022m7dicbkhjtu');
-INSERT INTO public."User" VALUES ('cmtim3i0g000o2m7dhlh9w1ar', 'peter.nyman@avarn.se', 'Peter Nyman', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'INSTRUCTOR', '070-890 12 34', true, NULL, '2026-09-01 11:56:43.888', 'cmtim3hyy00032m7dgu1ctwz4');
-INSERT INTO public."User" VALUES ('cmtim3i0i000p2m7d6sj9j0qz', 'karin.dahl@avarn.se', 'Karin Dahl', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'REGIONAL_MANAGER', '070-901 23 45', true, NULL, '2026-09-01 11:56:43.89', 'cmtim3hyv00022m7dicbkhjtu');
-INSERT INTO public."User" VALUES ('cmtim3i0m000q2m7d9hs7ruus', 'magnus.oberg@avarn.se', 'Magnus Öberg', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'NATIONAL_MANAGER', '070-012 34 56', true, NULL, '2026-09-01 11:56:43.894', NULL);
-INSERT INTO public."User" VALUES ('cmtim3i0q000r2m7dzd23f518', 'admin@avarn.se', 'Systemadministratör', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'ADMIN', NULL, true, NULL, '2026-09-01 11:56:43.898', NULL);
+INSERT INTO public."User" VALUES ('cmtim3i06000j2m7dimg2alyk', 'johan.larsson@avarn.se', 'Johan Larsson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-345 67 89', true, '2026-09-01 11:58:20.563', '2026-09-01 11:56:43.878', 'cmtim3hyy00032m7dgu1ctwz4');
+INSERT INTO public."User" VALUES ('cmtim3i0i000p2m7d6sj9j0qz', 'karin.dahl@avarn.se', 'Karin Dahl', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'REGIONAL_MANAGER', '070-901 23 45', true, '2026-09-01 11:58:28.959', '2026-09-01 11:56:43.89', 'cmtim3hyv00022m7dicbkhjtu');
+INSERT INTO public."User" VALUES ('cmtim3i0q000r2m7dzd23f518', 'admin@avarn.se', 'Systemadministratör', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'ADMIN', NULL, true, '2026-09-01 11:58:30.621', '2026-09-01 11:56:43.898', NULL);
+INSERT INTO public."User" VALUES ('cmtim3i0m000q2m7d9hs7ruus', 'magnus.oberg@avarn.se', 'Magnus Öberg', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'NATIONAL_MANAGER', '070-012 34 56', true, '2026-09-01 11:58:31.893', '2026-09-01 11:56:43.894', NULL);
+INSERT INTO public."User" VALUES ('cmtim3i0e000n2m7ds08y9fyi', 'anna.karlsson@avarn.se', 'Anna Karlsson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'INSTRUCTOR', '070-789 01 23', true, '2026-09-01 11:59:52.419', '2026-09-01 11:56:43.886', 'cmtim3hyv00022m7dicbkhjtu');
+INSERT INTO public."User" VALUES ('cmtim3i00000h2m7dtebiy6zb', 'erik.andersson@avarn.se', 'Erik Andersson', '$2b$10$RvUPXoheNyUl2iN2x8ht/eTF5F7KpNPtmIce.kIKKxH9iqF3KHnp.', 'HANDLER', '070-123 45 67', true, '2026-09-01 11:59:55.817', '2026-09-01 11:56:43.872', 'cmtim3hyv00022m7dicbkhjtu');
 
 --
 -- Data for Name: _prisma_migrations; Type: TABLE DATA; Schema: public; Owner: -

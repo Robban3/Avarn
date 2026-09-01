@@ -53,7 +53,12 @@ const header = `--
 --
 -- Klistra in hela den här filen i Supabase: SQL Editor > New query > Run.
 -- Filen skapar samtliga tabeller, lägger in exempeldata och slår på
--- radsäkerhet. Den är avsedd för en tom databas och körs en gång.
+-- radsäkerhet.
+--
+-- ENDAST FÖR EN TOM DATABAS. Har databasen redan tabellerna avbryts filen
+-- med "relation ... already exists". Kör då i stället filerna i
+-- prisma/supabase/, som applicerar en migrering i taget och är ofarliga att
+-- köra om.
 --
 -- Genererad av scripts/generate-supabase-sql.mjs – ändra inte här, utan i
 -- prisma/schema.prisma och prisma/seed.ts, och generera om.

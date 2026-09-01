@@ -43,21 +43,38 @@ npm run db:setup  # skapar tabellerna och lägger in exempeldata
 npm run dev       # http://localhost:3000
 ```
 
-### Alternativ: skapa tabellerna direkt i Supabase
+### Alternativ: köra SQL direkt i Supabase
 
 Går det inte att köra `db:setup` – eller vill du bara få igång databasen
-utan att installera något – finns hela uppsättningen som en färdig SQL-fil:
+utan att installera något – finns SQL:en färdig i repot. Vilken fil du ska
+använda beror på om databasen är tom eller inte:
 
-1. Öppna **SQL Editor → New query** i Supabase.
-2. Klistra in hela `prisma/supabase-setup.sql` och kör.
+| Läge | Kör | Var |
+| --- | --- | --- |
+| Ny, tom databas | hela uppsättningen | `prisma/supabase-setup.sql` |
+| Databasen har redan tabellerna | en migrering i taget | filerna i `prisma/supabase/` |
 
-Filen skapar de 27 tabellerna, lägger in exempeldatan, slår på radsäkerhet
-och markerar migreringen som körd, så att ett senare `prisma migrate deploy`
-blir en tom operation. Databaslösenordet lämnar aldrig din dator den här
-vägen — klistra aldrig in anslutningssträngen i en chatt.
+Öppna **SQL Editor → New query** i Supabase, klistra in filen och kör.
 
-Filen genereras om med `npm run db:sql` efter en schemaändring; den skrivs
-aldrig för hand.
+`supabase-setup.sql` skapar de 27 tabellerna, lägger in exempeldatan, slår på
+radsäkerhet och bokför migreringarna. Den avbryts med `relation ... already
+exists` om databasen redan är uppsatt — det är avsiktligt, den ska inte skriva
+över befintlig data.
+
+Filerna i `prisma/supabase/` applicerar varsin migrering och hoppar över sig
+själva om de redan är körda, så de är ofarliga att köra om och går att köra i
+valfri ordning. Efter en schemaändring finns den nya migreringen som en ny fil
+där.
+
+Databaslösenordet lämnar aldrig din dator den här vägen — klistra aldrig in
+anslutningssträngen i en chatt.
+
+Båda genereras om efter en schemaändring, aldrig för hand:
+
+```bash
+npm run db:sql             # hela uppsättningen
+npm run db:sql:migrations  # en fil per migrering
+```
 
 ## Driftsättning på Vercel
 
@@ -179,6 +196,7 @@ npm run test       # Vitest – behörighetslogik och domänregler
 npm run test:e2e   # Playwright – rökprov och åtkomstkontroller
 npm run db:migrate # ny migrering efter schemaändring
 npm run db:sql     # genererar om prisma/supabase-setup.sql
+npm run db:sql:migrations # genererar om filerna i prisma/supabase/
 npm run seed       # lägger in exempeldata på nytt
 npm run db:studio  # Prisma Studio
 ```
