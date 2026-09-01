@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
@@ -12,6 +13,7 @@ import {
   CheckCircleIcon,
   MapPinIcon,
   MessageIcon,
+  PencilIcon,
   ScentIcon,
   TreeIcon,
 } from "@/components/icons";
@@ -37,6 +39,7 @@ import {
   addSessionComment,
   approveSession,
   requestChanges,
+  submitSession,
   uploadSessionMedia,
 } from "../actions";
 
@@ -271,6 +274,27 @@ export default async function SessionPage({
           />
         </div>
       </section>
+
+      {/* Förarens egna åtgärder: rätta passet, och skicka in ett utkast */}
+      {editable ? (
+        <section className="mb-3 flex gap-2.5">
+          <Link
+            href={`/traning/${session.id}/redigera`}
+            className="btn btn-secondary flex-1"
+          >
+            <PencilIcon className="h-[18px] w-[18px]" />
+            Rätta uppgifterna
+          </Link>
+          {session.status !== "SUBMITTED" ? (
+            <form action={submitSession} className="flex-1">
+              <input type="hidden" name="sessionId" value={session.id} />
+              <button type="submit" className="btn btn-primary w-full">
+                Skicka in
+              </button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Granskning */}
       {canApprove ? (

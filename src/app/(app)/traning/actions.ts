@@ -54,6 +54,167 @@ function combineDateTime(date: string, time: string) {
   return parsed;
 }
 
+/**
+ * Uppdaterar ett befintligt pass. Föraren äger sitt pass fram till
+ * godkännande; därefter är det låst och rättelser sker genom en kommentar.
+ */
+export async function updateSession(
+  _prev: SessionFormState,
+  formData: FormData,
+): Promise<SessionFormState> {
+  const user = await requireUser();
+  assertCan(user, "session:create");
+
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const existing = await db.trainingSession.findFirst({
+    where: { id: sessionId, team: teamScope(user) },
+    select: { id: true, createdById: true, status: true, teamId: true },
+  });
+  if (!existing) return { error: "Passet ligger utanför din behörighet." };
+  if (!canEditSession(user, existing)) {
+    return {
+      error:
+        existing.status === "APPROVED"
+          ? "Passet är godkänt och kan inte längre ändras."
+          : "Bara den som rapporterat passet kan ändra det.",
+    };
+  }
+
+  const parsed = sessionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Kontrollera uppgifterna." };
+  }
+  const data = parsed.data;
+
+  if (data.foundCount > data.hideCount) {
+    return { error: "Antal markeringar kan inte vara fler än antalet gömmor." };
+  }
+
+  try {
+    await assertTeamInScope(user.id, user.role, user.regionId, data.teamId);
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+
+  let startAt: Date;
+  let endAt: Date | null = null;
+  try {
+    startAt = combineDateTime(data.date, data.startTime);
+    endAt = data.endTime ? combineDateTime(data.date, data.endTime) : null;
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+
+  if (endAt && endAt <= startAt) {
+    return { error: "Sluttiden måste vara efter starttiden." };
+  }
+
+  const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
+
+  await db.trainingSession.update({
+    where: { id: existing.id },
+    data: {
+      teamId: data.teamId,
+      startAt,
+      endAt,
+      location: data.location,
+      trainingArea: data.trainingArea,
+      environment: data.environment,
+      targetOdor: data.targetOdor,
+      disciplineId: data.disciplineId || null,
+      hideCount: data.hideCount,
+      foundCount: data.foundCount,
+      comment: data.comment || null,
+      status,
+      // En rättelse efter begärd komplettering ska granskas på nytt.
+      approvedById: null,
+      approvedAt: null,
+    },
+  });
+
+  // Gömmorna speglar antalen och skrivs om när de ändrats.
+  await db.hide.deleteMany({ where: { sessionId: existing.id } });
+  await db.hide.createMany({
+    data: Array.from({ length: data.hideCount }, (_, i) => ({
+      sessionId: existing.id,
+      label: `Gömma ${i + 1}`,
+      outcome: i < data.foundCount ? "FOUND" : "MISSED",
+      sortOrder: i + 1,
+    })),
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "TrainingSession",
+    entityId: existing.id,
+    detail: status === "SUBMITTED" ? "Rättat och inskickat" : "Utkast sparat",
+  });
+
+  if (status === "SUBMITTED") {
+    const instructors = await instructorsForTeam(data.teamId);
+    await notifyMany(instructors, {
+      type: "COMMENT",
+      title: "Träningspass att granska",
+      body: `${user.name} har skickat in ${data.trainingArea} – ${data.environment}.`,
+      url: `/traning/${existing.id}`,
+    });
+  }
+
+  revalidatePath(`/traning/${existing.id}`);
+  revalidatePath("/traning");
+  revalidatePath("/hem");
+  redirect(`/traning/${existing.id}`);
+}
+
+/** Skickar in ett utkast utan att gå via formuläret. */
+export async function submitSession(formData: FormData) {
+  const user = await requireUser();
+  assertCan(user, "session:create");
+
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const session = await db.trainingSession.findFirst({
+    where: { id: sessionId, team: teamScope(user) },
+    select: {
+      id: true,
+      createdById: true,
+      status: true,
+      teamId: true,
+      trainingArea: true,
+      environment: true,
+    },
+  });
+  if (!session) throw new Error("Passet ligger utanför din behörighet.");
+  if (!canEditSession(user, session)) {
+    throw new Error("Passet kan inte längre ändras.");
+  }
+
+  await db.trainingSession.update({
+    where: { id: session.id },
+    data: { status: "SUBMITTED", approvedById: null, approvedAt: null },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "TrainingSession",
+    entityId: session.id,
+    detail: "Inskickat",
+  });
+
+  const instructors = await instructorsForTeam(session.teamId);
+  await notifyMany(instructors, {
+    type: "COMMENT",
+    title: "Träningspass att granska",
+    body: `${user.name} har skickat in ${session.trainingArea} – ${session.environment}.`,
+    url: `/traning/${session.id}`,
+  });
+
+  revalidatePath(`/traning/${session.id}`);
+  revalidatePath("/traning");
+  revalidatePath("/hem");
+}
+
 export async function createSession(
   _prev: SessionFormState,
   formData: FormData,
