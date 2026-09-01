@@ -9,6 +9,7 @@ import { assertCan, canEditReport, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
 import { notify, notifyMany } from "@/lib/notify";
 import { isAllowedType, storeUpload } from "@/lib/media";
+import { fromLocalInput } from "@/lib/format";
 
 /** Server actions för operativa rapporter. */
 
@@ -99,8 +100,9 @@ export async function updateReport(
     return { error: "Ekipaget är inte tilldelat det här uppdraget." };
   }
 
-  const startedAt = data.startedAt ? new Date(data.startedAt) : null;
-  const endedAt = data.endedAt ? new Date(data.endedAt) : null;
+  // Klockslagen läses som svensk tid, precis som formuläret visade dem.
+  const startedAt = data.startedAt ? fromLocalInput(data.startedAt) : null;
+  const endedAt = data.endedAt ? fromLocalInput(data.endedAt) : null;
   if (startedAt && endedAt && endedAt <= startedAt) {
     return { error: "Sluttiden måste vara efter starttiden." };
   }
@@ -253,8 +255,9 @@ export async function createReport(
     return { error: "Ekipaget är inte tilldelat det här uppdraget." };
   }
 
-  const startedAt = data.startedAt ? new Date(data.startedAt) : null;
-  const endedAt = data.endedAt ? new Date(data.endedAt) : null;
+  // Klockslagen läses som svensk tid, precis som formuläret visade dem.
+  const startedAt = data.startedAt ? fromLocalInput(data.startedAt) : null;
+  const endedAt = data.endedAt ? fromLocalInput(data.endedAt) : null;
   if (startedAt && endedAt && endedAt <= startedAt) {
     return { error: "Sluttiden måste vara efter starttiden." };
   }

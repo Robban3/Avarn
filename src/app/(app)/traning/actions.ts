@@ -9,6 +9,7 @@ import { assertCan, canEditSession, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
 import { instructorsForTeam, notify, notifyMany } from "@/lib/notify";
 import { isAllowedType, storeUpload } from "@/lib/media";
+import { fromLocalInput } from "@/lib/format";
 
 /**
  * Server actions för träningsdagboken. Varje action börjar med att
@@ -47,11 +48,25 @@ const sessionSchema = z.object({
 export type SessionFormState = { error?: string };
 
 function combineDateTime(date: string, time: string) {
-  const parsed = new Date(`${date}T${time}`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error("Ogiltigt datum eller klockslag.");
-  }
-  return parsed;
+  return fromLocalInput(`${date}T${time}`);
+}
+
+/**
+ * Ett kvällspass kan sluta efter midnatt. Formuläret har bara ett datum, så
+ * en sluttid som ligger före starttiden hör till nästa dygn.
+ */
+function endOfSession(startAt: Date, date: string, time?: string) {
+  if (!time) return null;
+  const endAt = combineDateTime(date, time);
+  if (endAt > startAt) return endAt;
+  return combineDateTime(nextDay(date), time);
+}
+
+/** "2026-09-01" → "2026-09-02". */
+function nextDay(date: string) {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -100,13 +115,9 @@ export async function updateSession(
   let endAt: Date | null = null;
   try {
     startAt = combineDateTime(data.date, data.startTime);
-    endAt = data.endTime ? combineDateTime(data.date, data.endTime) : null;
+    endAt = endOfSession(startAt, data.date, data.endTime);
   } catch (error) {
     return { error: (error as Error).message };
-  }
-
-  if (endAt && endAt <= startAt) {
-    return { error: "Sluttiden måste vara efter starttiden." };
   }
 
   const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
@@ -242,13 +253,9 @@ export async function createSession(
   let endAt: Date | null = null;
   try {
     startAt = combineDateTime(data.date, data.startTime);
-    endAt = data.endTime ? combineDateTime(data.date, data.endTime) : null;
+    endAt = endOfSession(startAt, data.date, data.endTime);
   } catch (error) {
     return { error: (error as Error).message };
-  }
-
-  if (endAt && endAt <= startAt) {
-    return { error: "Sluttiden måste vara efter starttiden." };
   }
 
   const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";

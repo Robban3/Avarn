@@ -70,6 +70,53 @@ export function toLocalInput(date: Date) {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
+/**
+ * "2026-05-24" i svensk tid. Används som nyckel när uppdrag grupperas per
+ * dag – jämförelsen blir densamma oavsett serverns egen tidszon.
+ */
+export const dateKey = (d: Date) => toLocalInput(d).slice(0, 10);
+
+/** Hur långt före eller efter UTC svensk tid låg vid en viss tidpunkt. */
+function offsetMs(instant: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const wallAsUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") % 24,
+    get("minute"),
+    get("second"),
+  );
+  return wallAsUtc - instant.getTime();
+}
+
+/**
+ * Motsatsen till toLocalInput: gör om "2026-05-24T08:00" till rätt tidpunkt.
+ * Klockslaget läses som svensk tid, precis som det visades i formuläret –
+ * annars skulle ett pass flytta sig varje gång det sparades om, eftersom
+ * servern kör i UTC.
+ */
+export function fromLocalInput(value: string) {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?$/.exec(value.trim());
+  if (!match) throw new Error("Ogiltigt datum eller klockslag.");
+  const wall = Date.parse(`${match[1]}T${match[2]}${match[3] ?? ":00"}Z`);
+  if (Number.isNaN(wall)) throw new Error("Ogiltigt datum eller klockslag.");
+  // Två varv räcker för att landa rätt även dygnet då klockan ställs om.
+  let instant = wall - offsetMs(new Date(wall));
+  instant = wall - offsetMs(new Date(instant));
+  return new Date(instant);
+}
+
 /** "09:00 – 11:15", eller bara starttiden om sluttid saknas. */
 export function formatTimeRange(start: Date, end?: Date | null) {
   return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);
