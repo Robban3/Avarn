@@ -4,7 +4,7 @@ import { Badge, EmptyState, SectionHeader } from "@/components/ui";
 import { CertificateIcon } from "@/components/icons";
 import { CERT_ICON_CLASSES } from "@/components/cert-styles";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
-import { teamScope } from "@/lib/authz";
+import { can, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { formatDate, daysUntil } from "@/lib/format";
 import { CERT_APPLIES_TO_LABELS } from "@/lib/domain";
@@ -14,6 +14,8 @@ import {
   certStatus,
   type CertStatus,
 } from "@/lib/certifications";
+import { CertForm } from "./cert-form";
+import { renewCertification } from "./actions";
 
 export const metadata: Metadata = { title: "Certifikat" };
 
@@ -27,6 +29,49 @@ export default async function CertificationsPage() {
     where: teamScope(user),
     select: { id: true, dogId: true, handlerId: true },
   });
+
+  const manages = can(user, "cert:manage");
+
+  // Certifikattyper och möjliga mottagare, för registreringsformuläret.
+  const [certTypes, scopedTeams] = await Promise.all([
+    manages
+      ? db.certificationType.findMany({ orderBy: { name: "asc" } })
+      : Promise.resolve([]),
+    manages
+      ? db.team.findMany({
+          where: { ...teamScope(user), status: "ACTIVE" },
+          include: { dog: true, handler: true },
+          orderBy: { dog: { name: "asc" } },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // En certifikattyp gäller ekipaget, hunden eller föraren – listan hålls
+  // isär så att formuläret bara erbjuder rimliga mottagare.
+  const subjects = [
+    ...scopedTeams.map((t) => ({
+      value: `team:${t.id}`,
+      label: `${t.dog.name} · ${t.handler.name}`,
+      appliesTo: "TEAM",
+    })),
+    ...scopedTeams.map((t) => ({
+      value: `dog:${t.dogId}`,
+      label: t.dog.name,
+      appliesTo: "DOG",
+    })),
+    ...Array.from(
+      new Map(
+        scopedTeams.map((t) => [
+          t.handlerId,
+          {
+            value: `user:${t.handlerId}`,
+            label: t.handler.name,
+            appliesTo: "HANDLER",
+          },
+        ]),
+      ).values(),
+    ),
+  ];
 
   const certifications = await db.certification.findMany({
     where: {
@@ -75,6 +120,20 @@ export default async function CertificationsPage() {
       unread={unread}
       role={user.role}
     >
+      {manages ? (
+        <div className="mb-5">
+          <CertForm
+            types={certTypes.map((t) => ({
+              id: t.id,
+              name: t.name,
+              validityMonths: t.validityMonths,
+              appliesTo: t.appliesTo,
+            }))}
+            subjects={subjects}
+          />
+        </div>
+      ) : null}
+
       {certifications.length === 0 ? (
         <EmptyState
           icon={<CertificateIcon className="h-7 w-7" />}
@@ -128,13 +187,30 @@ export default async function CertificationsPage() {
                             {cert.issuer ? ` · ${cert.issuer}` : ""}
                           </p>
                         </div>
-                        <Badge tone={CERT_STATUS_TONES[status]}>
-                          {status === "EXPIRED"
-                            ? CERT_STATUS_LABELS[status]
-                            : status === "EXPIRING"
-                              ? `${days} d kvar`
-                              : CERT_STATUS_LABELS[status]}
-                        </Badge>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          <Badge tone={CERT_STATUS_TONES[status]}>
+                            {status === "EXPIRED"
+                              ? CERT_STATUS_LABELS[status]
+                              : status === "EXPIRING"
+                                ? `${days} d kvar`
+                                : CERT_STATUS_LABELS[status]}
+                          </Badge>
+                          {manages && status !== "VALID" ? (
+                            <form action={renewCertification}>
+                              <input
+                                type="hidden"
+                                name="certificationId"
+                                value={cert.id}
+                              />
+                              <button
+                                type="submit"
+                                className="text-xs font-medium text-brand"
+                              >
+                                Förnya
+                              </button>
+                            </form>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}

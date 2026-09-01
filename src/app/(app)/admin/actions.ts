@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -92,4 +93,48 @@ export async function toggleUserActive(formData: FormData) {
   });
 
   revalidatePath("/admin");
+}
+
+/**
+ * Sätter ett nytt tillfälligt lösenord åt en användare som låst ute sig.
+ * Lösenordet slumpas och visas en gång för administratören – det lagras
+ * aldrig i klartext.
+ */
+export async function resetPassword(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const user = await requireUser();
+  assertCan(user, "admin:manage");
+
+  const userId = String(formData.get("userId") ?? "");
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true },
+  });
+  if (!target) return { error: "Användaren finns inte." };
+
+  // Läsbart men slumpat: 18 tecken ur base64 utan lättförväxlade tecken.
+  const temporary = randomBytes(18)
+    .toString("base64")
+    .replace(/[+/=IlO0]/g, "")
+    .slice(0, 14);
+
+  await db.user.update({
+    where: { id: target.id },
+    data: { passwordHash: await bcrypt.hash(temporary, 10) },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "User",
+    entityId: target.id,
+    detail: `Återställde lösenord för ${target.name}`,
+  });
+
+  revalidatePath("/admin");
+  return {
+    ok: `Nytt lösenord för ${target.name}: ${temporary} — visas bara en gång.`,
+  };
 }

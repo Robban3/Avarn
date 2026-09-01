@@ -60,6 +60,7 @@ model User {
   notifications         Notification[]
   certifications        Certification[]
   uploads               MediaAsset[]           @relation("MediaUploader")
+  profilePhotos         MediaAsset[]           @relation("ProfilePhotos")
   auditLogs             AuditLog[]
 
   @@index([role])
@@ -94,6 +95,7 @@ model Dog {
   disciplines    DogDiscipline[]
   educations     DogEducation[]
   certifications Certification[]
+  photos         MediaAsset[]    @relation("DogPhotos")
 }
 
 model SearchDiscipline {
@@ -440,9 +442,14 @@ model MediaAsset {
   report            OperationalReport? @relation(fields: [reportId], references: [id], onDelete: Cascade)
   certificationId   String?
   certification     Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  dogId             String?
+  dog               Dog? @relation("DogPhotos", fields: [dogId], references: [id], onDelete: Cascade)
+  profileUserId     String?
+  profileUser       User? @relation("ProfilePhotos", fields: [profileUserId], references: [id], onDelete: Cascade)
 
   @@index([trainingSessionId])
   @@index([reportId])
+  @@index([dogId])
 }
 
 model Comment {

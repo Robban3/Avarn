@@ -11,10 +11,12 @@ import { CertificateIcon } from "@/components/icons";
 import { CERT_ICON_CLASSES } from "@/components/cert-styles";
 import { currentUserRecord, unreadNotificationCount } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ageInYears, formatDate } from "@/lib/format";
+import { ageInYears, formatDate, formatShortDate } from "@/lib/format";
 import { ROLE_LABELS, type Role } from "@/lib/domain";
 import { certStatus, certValidityText } from "@/lib/certifications";
 import { logout } from "@/app/login/actions";
+import { PasswordForm } from "./password-form";
+import { AvailabilityForm } from "./availability-form";
 
 export const metadata: Metadata = { title: "Min profil" };
 
@@ -23,7 +25,7 @@ export default async function ProfilePage() {
   const role = record.role as Role;
   const unread = await unreadNotificationCount(record.id);
 
-  const [teams, certifications] = await Promise.all([
+  const [teams, certifications, availability] = await Promise.all([
     db.team.findMany({
       where: { handlerId: record.id },
       include: { dog: true, region: true },
@@ -34,7 +36,18 @@ export default async function ProfilePage() {
       include: { type: true },
       orderBy: { expiresAt: "asc" },
     }),
+    // Kommande och pågående perioder – historik är inte intressant här.
+    db.teamAvailability.findMany({
+      where: { team: { handlerId: record.id }, endAt: { gte: new Date() } },
+      include: { team: { include: { dog: true } } },
+      orderBy: { startAt: "asc" },
+    }),
   ]);
+
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const inAWeek = new Date();
+  inAWeek.setDate(inAWeek.getDate() + 7);
 
   return (
     <AppShell
@@ -137,6 +150,32 @@ export default async function ProfilePage() {
                     : "Du har full åtkomst och hanterar användare och grunddata."}
           </p>
         </div>
+      </section>
+
+      {teams.length > 0 ? (
+        <section className="mb-5">
+          <SectionHeader title="Tillgänglighet" />
+          <p className="mb-2.5 text-xs text-fg-muted">
+            Styr statusen på startsidan och vilka ekipage som föreslås för
+            uppdrag.
+          </p>
+          <AvailabilityForm
+            teams={teams.map((t) => ({ id: t.id, label: t.dog.name }))}
+            periods={availability.map((a) => ({
+              id: a.id,
+              kind: a.kind,
+              range: `${a.team.dog.name} · ${formatShortDate(a.startAt)}–${formatShortDate(a.endAt)}`,
+              note: a.note,
+              current: a.startAt <= now && a.endAt >= now,
+            }))}
+            defaults={{ start: iso(now), end: iso(inAWeek) }}
+          />
+        </section>
+      ) : null}
+
+      <section className="mb-5">
+        <SectionHeader title="Säkerhet" />
+        <PasswordForm />
       </section>
 
       <form action={logout}>

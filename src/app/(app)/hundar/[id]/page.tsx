@@ -14,7 +14,7 @@ import {
 import { CertificateIcon, TrainingIcon, UserIcon } from "@/components/icons";
 import { CERT_ICON_CLASSES } from "@/components/cert-styles";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
-import { teamScope } from "@/lib/authz";
+import { can, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import {
   ageInYears,
@@ -200,9 +200,16 @@ export default async function DogPage({ params }: PageProps<"/hundar/[id]">) {
         )}
       </section>
 
-      <Link href="/traning/nytt" className="btn btn-primary w-full">
-        Rapportera träning
-      </Link>
+      <div className="flex gap-2.5">
+        <Link href="/traning/nytt" className="btn btn-primary flex-1">
+          Rapportera träning
+        </Link>
+        {can(user, "dog:create") ? (
+          <Link href={`/hundar/${dog.id}/redigera`} className="btn btn-secondary">
+            Redigera
+          </Link>
+        ) : null}
+      </div>
     </AppShell>
   );
 }

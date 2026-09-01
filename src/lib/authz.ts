@@ -36,6 +36,9 @@ export type Action =
   | "report:create"
   | "report:approve"
   | "report:viewAllInScope"
+  // Certifikat – formella intyg registreras av instruktör och uppåt, aldrig
+  // av den som intyget gäller.
+  | "cert:manage"
   // Översikt
   | "instructor:view"
   | "stats:view"
@@ -56,6 +59,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "session:approve",
     "plan:manage",
     "followUp:create",
+    "cert:manage",
     "instructor:view",
     "report:viewAllInScope",
   ],
@@ -71,6 +75,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "mission:assign",
     "report:approve",
     "report:viewAllInScope",
+    "cert:manage",
     "instructor:view",
     "stats:view",
   ],
@@ -86,6 +91,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "mission:assign",
     "report:approve",
     "report:viewAllInScope",
+    "cert:manage",
     "instructor:view",
     "stats:view",
   ],
@@ -101,6 +107,7 @@ const CAPABILITIES: Record<Role, Action[]> = {
     "mission:assign",
     "report:approve",
     "report:viewAllInScope",
+    "cert:manage",
     "instructor:view",
     "stats:view",
     "admin:manage",

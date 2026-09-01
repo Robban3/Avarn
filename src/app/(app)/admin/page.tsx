@@ -7,6 +7,7 @@ import { formatRelative } from "@/lib/format";
 import { ALL_ROLES, ROLE_LABELS, type Role } from "@/lib/domain";
 import { UserForm } from "./user-form";
 import { toggleUserActive } from "./actions";
+import { ResetPasswordButton } from "./reset-password";
 
 export const metadata: Metadata = { title: "Administration" };
 
@@ -58,15 +59,18 @@ export default async function AdminPage() {
                   {u.active ? "Aktiv" : "Avstängd"}
                 </Badge>
                 {u.id !== admin.id ? (
-                  <form action={toggleUserActive}>
-                    <input type="hidden" name="userId" value={u.id} />
-                    <button
-                      type="submit"
-                      className="text-xs text-fg-dim transition-colors hover:text-fg-muted"
-                    >
-                      {u.active ? "Stäng av" : "Aktivera"}
-                    </button>
-                  </form>
+                  <>
+                    <form action={toggleUserActive}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button
+                        type="submit"
+                        className="text-xs text-fg-dim transition-colors hover:text-fg-muted"
+                      >
+                        {u.active ? "Stäng av" : "Aktivera"}
+                      </button>
+                    </form>
+                    <ResetPasswordButton userId={u.id} />
+                  </>
                 ) : null}
               </div>
             </div>
