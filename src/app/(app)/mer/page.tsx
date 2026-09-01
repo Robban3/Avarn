@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
-import { Avatar, SectionHeader } from "@/components/ui";
+import { Avatar, PageHeading, SectionHeader } from "@/components/ui";
 import {
   CertificateIcon,
   ChartIcon,
@@ -69,7 +69,9 @@ export default async function MorePage() {
   ].filter((i) => i.show);
 
   return (
-    <AppShell title="Mer" unread={unread} role={role}>
+    <AppShell branded title="Hundar" menu={false} unread={unread} role={role}>
+      <PageHeading>Mer</PageHeading>
+
       <Link
         href="/profil"
         className="card mb-5 flex items-center gap-3.5 p-4 transition-colors hover:bg-surface-2"

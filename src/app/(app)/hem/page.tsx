@@ -114,7 +114,14 @@ export default async function HomePage() {
   };
 
   return (
-    <AppShell branded title="Hem" unread={unread} role={user.role} wide>
+    <AppShell
+      branded
+      title="Hundar"
+      menu={false}
+      unread={unread}
+      role={user.role}
+      wide
+    >
       {/* 1. Personligt sidhuvud */}
       <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">

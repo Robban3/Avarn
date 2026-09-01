@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
-import { EmptyState, SectionHeader } from "@/components/ui";
+import { EmptyState, PageHeading, SectionHeader } from "@/components/ui";
 import {
   AvailabilityCard,
   DayStrip,
   MissionCard,
-  PageHeading,
   ReminderList,
   type DayTile,
   type Reminder,

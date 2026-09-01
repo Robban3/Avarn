@@ -6,6 +6,7 @@ import {
   Badge,
   Chip,
   EmptyState,
+  PageHeading,
   SectionHeader,
 } from "@/components/ui";
 import { CertificateIcon, ChevronRightIcon, PawIcon } from "@/components/icons";
@@ -46,10 +47,14 @@ export default async function DogsPage() {
 
   return (
     <AppShell
-      title={showsOthers ? "Ekipage" : "Mina hundar"}
+      branded
+      title="Hundar"
+      menu={false}
       unread={unread}
       role={user.role}
     >
+      <PageHeading>{showsOthers ? "Ekipage" : "Mina hundar"}</PageHeading>
+
       {teams.length === 0 ? (
         <EmptyState
           icon={<PawIcon className="h-7 w-7" />}

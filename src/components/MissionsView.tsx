@@ -18,29 +18,6 @@ import {
  * öppna uppdraget för att veta vem man ska möta.
  */
 
-/* ------------------------------------------------------------ Sidrubrik */
-
-/**
- * Stor versal sidrubrik, t.ex. "UPPDRAG". Knappar som inte hör till en
- * enskild flik ligger här i stället för i flikraden, som annars kläms ihop.
- */
-export function PageHeading({
-  children,
-  action,
-}: {
-  children: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h1 className="text-[22px] font-bold uppercase tracking-[0.01em] text-fg">
-        {children}
-      </h1>
-      {action}
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------- Datumrad */
 
 export type DayTile = {

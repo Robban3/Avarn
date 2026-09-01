@@ -3,6 +3,31 @@ import type { ReactNode } from "react";
 import { ChevronRightIcon } from "./icons";
 import { initials } from "@/lib/format";
 
+/* -------------------------------------------------------------- Sidrubrik */
+
+/**
+ * Stor versal sidrubrik högst upp i en flik, t.ex. "UPPDRAG". Sidhuvudet
+ * visar varumärket och står stilla när man byter flik; det är den här
+ * rubriken som talar om var man är. Knappar som gäller hela sidan ligger
+ * här i stället för i flikraden, som annars kläms ihop.
+ */
+export function PageHeading({
+  children,
+  action,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h1 className="text-[22px] font-bold uppercase tracking-[0.01em] text-fg">
+        {children}
+      </h1>
+      {action}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------- Sektioner */
 
 /** Versal sektionsrubrik med valfri "Visa alla"-länk till höger. */
