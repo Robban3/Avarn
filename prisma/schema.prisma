@@ -408,7 +408,7 @@ model OperationalReport {
   startedAt     DateTime?
   endedAt       DateTime?
 
-  status       String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED
+  status       String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | CHANGES_REQUESTED
   submittedAt  DateTime?
   approvedById String?
   approvedBy   User?     @relation("ReportApprover", fields: [approvedById], references: [id])

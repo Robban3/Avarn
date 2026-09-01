@@ -52,6 +52,24 @@ export function formatDateTime(d: Date) {
   return `${formatDate(d)} ${formatTime(d)}`;
 }
 
+/**
+ * "2026-08-31T08:00" i svensk tid, som ett datetime-local-fält vill ha det.
+ * Servern renderar i UTC, så tidszonen måste anges uttryckligen.
+ */
+export function toLocalInput(date: Date) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
 /** "09:00 – 11:15", eller bara starttiden om sluttid saknas. */
 export function formatTimeRange(start: Date, end?: Date | null) {
   return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);

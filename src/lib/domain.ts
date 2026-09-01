@@ -90,13 +90,23 @@ export const REPORT_STATUS = {
   DRAFT: "DRAFT",
   SUBMITTED: "SUBMITTED",
   APPROVED: "APPROVED",
+  CHANGES_REQUESTED: "CHANGES_REQUESTED",
 } as const;
 
 export const REPORT_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Utkast",
   SUBMITTED: "Inskickad",
   APPROVED: "Godkänd",
+  CHANGES_REQUESTED: "Kompletteras",
 };
+
+/** Färgton för rapportens status, så att alla listor märker den likadant. */
+export function reportTone(status: string) {
+  if (status === "APPROVED") return "ok" as const;
+  if (status === "SUBMITTED") return "brand" as const;
+  if (status === "CHANGES_REQUESTED") return "warn" as const;
+  return "neutral" as const;
+}
 
 export const HIDE_OUTCOME_LABELS: Record<string, string> = {
   FOUND: "Markerad",

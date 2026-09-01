@@ -30,6 +30,8 @@ import {
 import {
   ASSIGNMENT_STATUS_LABELS,
   MISSION_STATUS_LABELS,
+  REPORT_STATUS_LABELS,
+  reportTone,
 } from "@/lib/domain";
 import { assignTeam, respondToAssignment, setMissionStatus } from "../actions";
 import { suggestTeams } from "@/lib/assignment";
@@ -86,6 +88,9 @@ export default async function MissionPage({
   const myAccepted = mission.assignments.filter(
     (a) => teamIds.includes(a.teamId) && a.status === "ACCEPTED",
   );
+  // Har något av mina ekipage redan en rapport på uppdraget? Då ska knappen
+  // leda dit i stället för att bjuda in till en andra rapport.
+  const myReport = mission.reports.find((r) => teamIds.includes(r.teamId));
 
   const canAssign = can(user, "mission:assign");
   const suggestions = canAssign
@@ -327,8 +332,8 @@ export default async function MissionPage({
                     {report.author.name} · {formatShortDate(report.createdAt)}
                   </p>
                 </div>
-                <Badge tone={report.status === "APPROVED" ? "ok" : "brand"}>
-                  {report.status === "APPROVED" ? "Godkänd" : "Inskickad"}
+                <Badge tone={reportTone(report.status)}>
+                  {REPORT_STATUS_LABELS[report.status] ?? report.status}
                 </Badge>
               </Link>
             ))}
@@ -337,7 +342,16 @@ export default async function MissionPage({
       </section>
 
       {/* Åtgärder */}
-      {myAccepted.length > 0 && mission.reports.length === 0 ? (
+      {myReport ? (
+        myReport.authorId === user.id && myReport.status !== "APPROVED" ? (
+          <Link
+            href={`/rapporter/${myReport.id}/redigera`}
+            className="btn btn-primary w-full"
+          >
+            Fortsätt på rapporten
+          </Link>
+        ) : null
+      ) : myAccepted.length > 0 ? (
         <Link
           href={`/rapporter/nytt?uppdrag=${mission.id}`}
           className="btn btn-primary w-full"

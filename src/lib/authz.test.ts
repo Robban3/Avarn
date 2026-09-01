@@ -159,4 +159,20 @@ describe("äganderätt till egna inlägg", () => {
       }),
     ).toBe(false);
   });
+
+  it("låter en rättelse ske ända fram till godkännandet", () => {
+    // Ett inskickat pass ska gå att rätta, och en begärd komplettering
+    // vore meningslös om föraren inte kom åt formuläret igen.
+    const forare = user(ROLES.HANDLER);
+    for (const status of ["DRAFT", "SUBMITTED", "CHANGES_REQUESTED"]) {
+      expect(canEditSession(forare, { createdById: "u1", status })).toBe(true);
+      expect(canEditReport(forare, { authorId: "u1", status })).toBe(true);
+    }
+    expect(
+      canEditReport(user(ROLES.HANDLER), {
+        authorId: "annan",
+        status: "SUBMITTED",
+      }),
+    ).toBe(false);
+  });
 });

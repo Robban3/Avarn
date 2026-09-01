@@ -14,6 +14,7 @@ import {
   CheckCircleIcon,
   ClipboardIcon,
   MapPinIcon,
+  PencilIcon,
   ScentIcon,
   ShieldIcon,
 } from "@/components/icons";
@@ -33,7 +34,13 @@ import {
   INDICATION_OUTCOME_LABELS,
   REPORT_STATUS_LABELS,
 } from "@/lib/domain";
-import { addReportComment, approveReport, uploadReportMedia } from "../actions";
+import {
+  addReportComment,
+  approveReport,
+  requestReportChanges,
+  submitReport,
+  uploadReportMedia,
+} from "../actions";
 
 export const metadata: Metadata = { title: "Operativ rapport" };
 
@@ -243,14 +250,44 @@ export default async function ReportPage({
         </div>
       </section>
 
+      {/* Skribentens egna åtgärder: rätta rapporten, och skicka in ett utkast */}
+      {editable ? (
+        <section className="mb-3 flex gap-2.5">
+          <Link
+            href={`/rapporter/${report.id}/redigera`}
+            className="btn btn-secondary flex-1"
+          >
+            <PencilIcon className="h-[18px] w-[18px]" />
+            Rätta uppgifterna
+          </Link>
+          {report.status !== "SUBMITTED" ? (
+            <form action={submitReport} className="flex-1">
+              <input type="hidden" name="reportId" value={report.id} />
+              <button type="submit" className="btn btn-primary w-full">
+                Skicka in
+              </button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* Granskning */}
       {canApprove ? (
-        <form action={approveReport}>
-          <input type="hidden" name="reportId" value={report.id} />
-          <button type="submit" className="btn btn-primary w-full">
-            <CheckCircleIcon className="h-[18px] w-[18px]" />
-            Godkänn rapporten
-          </button>
-        </form>
+        <div className="flex gap-2.5">
+          <form action={requestReportChanges} className="flex-1">
+            <input type="hidden" name="reportId" value={report.id} />
+            <button type="submit" className="btn btn-secondary w-full">
+              Begär komplettering
+            </button>
+          </form>
+          <form action={approveReport} className="flex-1">
+            <input type="hidden" name="reportId" value={report.id} />
+            <button type="submit" className="btn btn-primary w-full">
+              <CheckCircleIcon className="h-[18px] w-[18px]" />
+              Godkänn
+            </button>
+          </form>
+        </div>
       ) : null}
 
       <p className="mt-4 text-center text-xs text-fg-dim">

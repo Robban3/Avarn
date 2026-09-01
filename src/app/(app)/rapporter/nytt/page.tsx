@@ -1,29 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { EmptyState } from "@/components/ui";
+import { Badge, EmptyState, SectionHeader } from "@/components/ui";
 import { BriefcaseIcon } from "@/components/icons";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
 import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { toLocalInput } from "@/lib/format";
+import { REPORT_STATUS_LABELS, reportTone } from "@/lib/domain";
+import { createReport } from "../actions";
 import { ReportForm } from "./report-form";
 
 export const metadata: Metadata = { title: "Ny rapport" };
-
-/** "2026-08-31T08:00" i lokal tid, som datetime-local vill ha det. */
-function toLocalInput(date: Date) {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Stockholm",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
 
 export default async function NewReportPage({
   searchParams,
@@ -34,15 +23,35 @@ export default async function NewReportPage({
   const unread = await unreadNotificationCount(user.id);
 
   if (!missionId) {
-    // Utan uppdrag visas vilka uppdrag som väntar på rapport.
-    const pending = await db.missionAssignment.findMany({
+    // Utan uppdrag visas vilka uppdrag som väntar på rapport. Ett eget
+    // utkast får inte gömma uppdraget – då ska det gå att öppna igen.
+    const mine = await db.missionAssignment.findMany({
       where: {
         team: teamScope(user),
         status: { in: ["ACCEPTED", "COMPLETED"] },
-        mission: { reports: { none: {} } },
       },
-      include: { mission: true, team: { include: { dog: true } } },
+      include: {
+        mission: {
+          include: {
+            reports: { select: { id: true, teamId: true, status: true } },
+          },
+        },
+        team: { include: { dog: true } },
+      },
       orderBy: { mission: { startAt: "desc" } },
+    });
+
+    // Prisma kan inte jämföra en nästlad relation med den yttre raden, så
+    // uppdelningen på "eget ekipage" görs här.
+    const ownReportOf = (a: (typeof mine)[number]) =>
+      a.mission.reports.find((r) => r.teamId === a.teamId);
+
+    const pending = mine.filter((a) => !ownReportOf(a));
+    const started = mine.flatMap((a) => {
+      const report = ownReportOf(a);
+      return report && report.status !== "APPROVED"
+        ? [{ assignment: a, report }]
+        : [];
     });
 
     return (
@@ -52,20 +61,50 @@ export default async function NewReportPage({
         unread={unread}
         role={user.role}
       >
-        {pending.length === 0 ? (
+        {pending.length === 0 && started.length === 0 ? (
           <EmptyState
             icon={<BriefcaseIcon className="h-7 w-7" />}
             title="Inga uppdrag väntar på rapport"
             description="Rapporten fylls i efter ett genomfört uppdrag."
           />
-        ) : (
-          <>
+        ) : null}
+
+        {started.length > 0 ? (
+          <section className="mb-5">
+            <SectionHeader title="Påbörjade rapporter" />
+            <div className="space-y-2.5">
+              {started.map(({ assignment: a, report }) => (
+                <Link
+                  key={a.id}
+                  href={`/rapporter/${report.id}/redigera`}
+                  className="card flex items-center gap-3 p-3.5 transition-colors hover:bg-surface-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-fg-muted">
+                      {a.mission.reference} · {a.team.dog.name}
+                    </p>
+                    <p className="truncate text-[15px] font-semibold">
+                      {a.mission.title}
+                    </p>
+                  </div>
+                  <Badge tone={reportTone(report.status)}>
+                    {REPORT_STATUS_LABELS[report.status] ?? report.status}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {pending.length > 0 ? (
+          <section>
+            <SectionHeader title="Väntar på rapport" />
             <p className="mb-3 text-sm text-fg-muted">
               Välj vilket uppdrag rapporten gäller.
             </p>
             <div className="space-y-2.5">
               {pending.map((a) => (
-                <a
+                <Link
                   key={a.id}
                   href={`/rapporter/nytt?uppdrag=${a.missionId}`}
                   className="card block p-3.5 transition-colors hover:bg-surface-2"
@@ -75,11 +114,11 @@ export default async function NewReportPage({
                   </p>
                   <p className="text-[15px] font-semibold">{a.mission.title}</p>
                   <p className="text-xs text-fg-muted">{a.mission.locality}</p>
-                </a>
+                </Link>
               ))}
             </div>
-          </>
-        )}
+          </section>
+        ) : null}
       </AppShell>
     );
   }
@@ -104,6 +143,7 @@ export default async function NewReportPage({
       role={user.role}
     >
       <ReportForm
+        action={createReport}
         mission={{
           id: mission.id,
           reference: mission.reference,

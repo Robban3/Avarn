@@ -7,7 +7,7 @@ import { requireUser, unreadNotificationCount } from "@/lib/auth";
 import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { formatShortDate } from "@/lib/format";
-import { REPORT_STATUS_LABELS } from "@/lib/domain";
+import { REPORT_STATUS_LABELS, reportTone } from "@/lib/domain";
 import type { Prisma } from "@/generated/prisma";
 
 export const metadata: Metadata = { title: "Rapporter" };
@@ -84,15 +84,7 @@ export default async function ReportsPage({
                   {report.mission.reference} ·{" "}
                   {formatShortDate(report.mission.startAt)}
                 </p>
-                <Badge
-                  tone={
-                    report.status === "APPROVED"
-                      ? "ok"
-                      : report.status === "SUBMITTED"
-                        ? "brand"
-                        : "neutral"
-                  }
-                >
+                <Badge tone={reportTone(report.status)}>
                   {REPORT_STATUS_LABELS[report.status] ?? report.status}
                 </Badge>
               </div>

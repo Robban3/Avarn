@@ -55,6 +55,177 @@ function parseIndications(formData: FormData) {
   return rows;
 }
 
+/**
+ * Uppdaterar en befintlig rapport. Den som skrivit rapporten äger den fram
+ * till godkännande; därefter är den låst och rättelser sker i en kommentar.
+ */
+export async function updateReport(
+  _prev: ReportFormState,
+  formData: FormData,
+): Promise<ReportFormState> {
+  const user = await requireUser();
+  assertCan(user, "report:create");
+
+  const reportId = String(formData.get("reportId") ?? "");
+  const existing = await db.operationalReport.findFirst({
+    where: { id: reportId, team: teamScope(user) },
+    select: { id: true, authorId: true, status: true, missionId: true },
+  });
+  if (!existing) return { error: "Rapporten ligger utanför din behörighet." };
+  if (!canEditReport(user, existing)) {
+    return {
+      error:
+        existing.status === "APPROVED"
+          ? "Rapporten är godkänd och kan inte längre ändras."
+          : "Bara den som skrivit rapporten kan ändra den.",
+    };
+  }
+
+  const parsed = reportSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Kontrollera uppgifterna." };
+  }
+  const data = parsed.data;
+
+  const assignment = await db.missionAssignment.findFirst({
+    where: {
+      missionId: data.missionId,
+      teamId: data.teamId,
+      team: teamScope(user),
+    },
+    include: { mission: true },
+  });
+  if (!assignment) {
+    return { error: "Ekipaget är inte tilldelat det här uppdraget." };
+  }
+
+  const startedAt = data.startedAt ? new Date(data.startedAt) : null;
+  const endedAt = data.endedAt ? new Date(data.endedAt) : null;
+  if (startedAt && endedAt && endedAt <= startedAt) {
+    return { error: "Sluttiden måste vara efter starttiden." };
+  }
+
+  const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
+  const indications = parseIndications(formData);
+
+  await db.operationalReport.update({
+    where: { id: existing.id },
+    data: {
+      missionId: data.missionId,
+      teamId: data.teamId,
+      areasSearched: data.areasSearched || null,
+      findings: data.findings || null,
+      deviations: data.deviations || null,
+      actions: data.actions || null,
+      startedAt,
+      endedAt,
+      status,
+      submittedAt: status === "SUBMITTED" ? new Date() : null,
+      // En rättelse efter begärd komplettering ska granskas på nytt.
+      approvedById: null,
+      approvedAt: null,
+    },
+  });
+
+  // Markeringarna skrivs om i sin helhet – de har ingen egen identitet i
+  // formuläret utöver sin ordning.
+  await db.indication.deleteMany({ where: { reportId: existing.id } });
+  await db.indication.createMany({
+    data: indications.map((row, i) => ({
+      reportId: existing.id,
+      location: row.location || null,
+      description: row.description || null,
+      outcome: row.outcome,
+      handedOverTo: row.handedOverTo || null,
+      sortOrder: i + 1,
+    })),
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "OperationalReport",
+    entityId: existing.id,
+    detail: status === "SUBMITTED" ? "Rättad och inskickad" : "Utkast sparat",
+  });
+
+  if (status === "SUBMITTED") {
+    await notify({
+      userId: assignment.assignedById,
+      type: "COMMENT",
+      title: `Rapport för ${assignment.mission.reference}`,
+      body: `${user.name} har skickat in en operativ rapport.`,
+      url: `/rapporter/${existing.id}`,
+    });
+    await db.missionAssignment.update({
+      where: { id: assignment.id },
+      data: { status: "COMPLETED" },
+    });
+  }
+
+  revalidatePath(`/rapporter/${existing.id}`);
+  revalidatePath("/rapporter");
+  revalidatePath(`/uppdrag/${data.missionId}`);
+  revalidatePath("/hem");
+  redirect(`/rapporter/${existing.id}`);
+}
+
+/** Skickar in ett utkast utan att gå via formuläret. */
+export async function submitReport(formData: FormData) {
+  const user = await requireUser();
+  assertCan(user, "report:create");
+
+  const reportId = String(formData.get("reportId") ?? "");
+  const report = await db.operationalReport.findFirst({
+    where: { id: reportId, team: teamScope(user) },
+    include: { mission: true },
+  });
+  if (!report) throw new Error("Rapporten ligger utanför din behörighet.");
+  if (!canEditReport(user, report)) {
+    throw new Error("Rapporten kan inte längre ändras.");
+  }
+
+  await db.operationalReport.update({
+    where: { id: report.id },
+    data: {
+      status: "SUBMITTED",
+      submittedAt: new Date(),
+      approvedById: null,
+      approvedAt: null,
+    },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "OperationalReport",
+    entityId: report.id,
+    detail: "Inskickad",
+  });
+
+  const assignment = await db.missionAssignment.findFirst({
+    where: { missionId: report.missionId, teamId: report.teamId },
+  });
+  if (assignment) {
+    await notify({
+      userId: assignment.assignedById,
+      type: "COMMENT",
+      title: `Rapport för ${report.mission.reference}`,
+      body: `${user.name} har skickat in en operativ rapport.`,
+      url: `/rapporter/${report.id}`,
+    });
+    await db.missionAssignment.update({
+      where: { id: assignment.id },
+      data: { status: "COMPLETED" },
+    });
+  }
+
+  revalidatePath(`/rapporter/${report.id}`);
+  revalidatePath("/rapporter");
+  revalidatePath(`/uppdrag/${report.missionId}`);
+  revalidatePath("/hem");
+}
+
 export async function createReport(
   _prev: ReportFormState,
   formData: FormData,
@@ -155,6 +326,10 @@ export async function approveReport(formData: FormData) {
     include: { mission: true },
   });
   if (!report) throw new Error("Rapporten ligger utanför din behörighet.");
+  // Bara en inskickad rapport kan godkännas – ett utkast är inte färdigt.
+  if (report.status !== "SUBMITTED") {
+    throw new Error("Rapporten är inte inskickad för granskning.");
+  }
 
   await db.operationalReport.update({
     where: { id: report.id },
@@ -179,6 +354,43 @@ export async function approveReport(formData: FormData) {
     type: "COMMENT",
     title: "Rapport godkänd",
     body: `${user.name} har godkänt rapporten för ${report.mission.reference}.`,
+    url: `/rapporter/${report.id}`,
+  });
+
+  revalidatePath(`/rapporter/${report.id}`);
+  revalidatePath("/rapporter");
+}
+
+/** Begär komplettering i stället för att godkänna. */
+export async function requestReportChanges(formData: FormData) {
+  const user = await requireUser();
+  assertCan(user, "report:approve");
+
+  const reportId = String(formData.get("reportId") ?? "");
+  const report = await db.operationalReport.findFirst({
+    where: { id: reportId, team: teamScope(user) },
+    include: { mission: true },
+  });
+  if (!report) throw new Error("Rapporten ligger utanför din behörighet.");
+
+  await db.operationalReport.update({
+    where: { id: report.id },
+    data: { status: "CHANGES_REQUESTED", approvedById: null, approvedAt: null },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "OperationalReport",
+    entityId: report.id,
+    detail: "Komplettering begärd",
+  });
+
+  await notify({
+    userId: report.authorId,
+    type: "COMMENT",
+    title: "Rapporten behöver kompletteras",
+    body: `${user.name} har bett om komplettering av ${report.mission.reference}.`,
     url: `/rapporter/${report.id}`,
   });
 
