@@ -20,6 +20,11 @@ type AppShellProps = {
   branded?: boolean;
   /** Visas som bakåtpil i stället för menyknapp. */
   backHref?: string;
+  /**
+   * Döljer menyknappen så att logotypen börjar vid vänsterkanten. "Mer"
+   * finns kvar i flikraden längst ner, så inget blir oåtkomligt.
+   */
+  menu?: boolean;
   /** Extra knapp längst till höger i sidhuvudet, t.ex. filter eller spara. */
   action?: ReactNode;
   /** Antal olästa notifieringar; döljer klockan när värdet är undefined. */
@@ -34,6 +39,7 @@ export function AppShell({
   title,
   branded = false,
   backHref,
+  menu = true,
   action,
   unread,
   wide = false,
@@ -56,7 +62,7 @@ export function AppShell({
             >
               <ArrowLeftIcon className="h-[22px] w-[22px]" />
             </Link>
-          ) : (
+          ) : menu ? (
             <Link
               href="/mer"
               aria-label="Meny"
@@ -64,7 +70,7 @@ export function AppShell({
             >
               <MenuIcon className="h-[22px] w-[22px]" />
             </Link>
-          )}
+          ) : null}
 
           {branded ? (
             <div className="flex flex-1 items-center gap-3">
