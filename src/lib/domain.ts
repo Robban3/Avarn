@@ -219,3 +219,26 @@ export const DISCIPLINE_CERT: Record<string, string> = {
 
 /** Certifikat som varje ekipage måste ha giltigt för att få tas ut. */
 export const TEAM_REQUIRED_CERTS = ["NHPR", "EKIPAGE"];
+
+/**
+ * Vilka län som hör till varje region på kartan i adminpanelen.
+ *
+ * Det här är en antagen indelning, inte hämtad ur något system – stämmer
+ * den inte med Avarns faktiska regioner rättas den här, och kartan följer
+ * med när `npm run map` körs om. Regionsidan visar länen per region så att
+ * ett fel syns i klartext och inte bara som en färg på kartan.
+ */
+export const REGION_LAN: Record<string, string[]> = {
+  NORD: ["Norrbotten", "Västerbotten", "Jämtland", "Västernorrland"],
+  MITT: [
+    "Dalarna",
+    "Gävleborg",
+    "Värmland",
+    "Örebro",
+    "Västmanland",
+    "Uppsala",
+  ],
+  OST: ["Stockholm", "Södermanland", "Östergötland", "Gotland"],
+  VAST: ["Västra Götaland", "Halland", "Jönköping"],
+  SYD: ["Skåne", "Blekinge", "Kronoberg", "Kalmar"],
+};

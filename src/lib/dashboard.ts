@@ -5,7 +5,7 @@ import type { SessionUser } from "./session";
 import { periodStats, startOfMonth, startOfPreviousMonth } from "./stats";
 import { certStatus } from "./certifications";
 import { daysUntil } from "./format";
-import { CERT_WARNING_DAYS } from "./domain";
+import { getSettings } from "./settings";
 
 /**
  * Underlaget till hundförarens startsida. Samlat här så att sidan blir en
@@ -82,7 +82,7 @@ export async function monthlyStats(user: SessionUser) {
  */
 export async function importantNotices(user: SessionUser, take = 4) {
   const limit = new Date();
-  limit.setDate(limit.getDate() + CERT_WARNING_DAYS);
+  limit.setDate(limit.getDate() + (await getSettings()).certWarningDays);
 
   const teams = await db.team.findMany({
     where: teamScope(user),

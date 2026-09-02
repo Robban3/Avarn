@@ -10,13 +10,13 @@ import { requirePanelUser } from "@/lib/auth";
 import { certificationOverview } from "@/lib/panel";
 import { certStatus } from "@/lib/certifications";
 import { daysUntil, formatDate } from "@/lib/format";
-import { CERT_WARNING_DAYS } from "@/lib/domain";
+
 
 export const metadata: Metadata = { title: "Certifikat & behörigheter" };
 
 export default async function PanelCertsPage() {
   const user = await requirePanelUser();
-  const { utgangna, snart, saknade, ejTillgangliga, teams } =
+  const { utgangna, snart, saknade, ejTillgangliga, teams, certWarningDays } =
     await certificationOverview(user);
 
   return (
@@ -24,7 +24,7 @@ export default async function PanelCertsPage() {
       user={user}
       aktiv="/panel/certifikat"
       title="Certifikat & behörigheter"
-      subtitle={`${teams.length} ekipage · ${utgangna.length} utgångna, ${snart.length} går ut inom ${CERT_WARNING_DAYS} dagar`}
+      subtitle={`${teams.length} ekipage · ${utgangna.length} utgångna, ${snart.length} går ut inom ${certWarningDays} dagar`}
     >
       {/* Det som hindrar arbete står först */}
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
@@ -94,7 +94,7 @@ export default async function PanelCertsPage() {
         </ChartCard>
 
         <ChartCard
-          title={`Går ut inom ${CERT_WARNING_DAYS} dagar (${snart.length})`}
+          title={`Går ut inom ${certWarningDays} dagar (${snart.length})`}
         >
           {snart.length === 0 ? (
             <Tomt text="Inget certifikat närmar sig sitt slutdatum." />

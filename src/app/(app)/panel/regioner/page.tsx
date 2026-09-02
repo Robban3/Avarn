@@ -5,6 +5,7 @@ import { Table, Td, Th } from "@/components/PanelUI";
 import { requireCapability } from "@/lib/auth";
 import { coverageByRegion, capacityByDiscipline } from "@/lib/stats";
 import { db } from "@/lib/db";
+import { REGION_LAN } from "@/lib/domain";
 
 export const metadata: Metadata = { title: "Regioner" };
 
@@ -56,8 +57,8 @@ export default async function PanelRegionsPage() {
             />
           </div>
           <p className="mt-2 text-center text-[11px] text-fg-dim">
-            Mörkare ton betyder fler ekipage. Kartan är en stiliserad
-            siluett, inte en geografisk projektion.
+            Mörkare ton betyder fler ekipage. Länsgränserna är öppna data,
+            se data/KALLA.md.
           </p>
         </ChartCard>
 
@@ -76,7 +77,12 @@ export default async function PanelRegionsPage() {
               <tbody>
                 {tackning.map((t) => (
                   <tr key={t.region.id}>
-                    <Td className="font-medium">{t.region.name}</Td>
+                    <Td>
+                      <span className="font-medium">{t.region.name}</span>
+                      <span className="mt-0.5 block text-[11px] text-fg-dim">
+                        {(REGION_LAN[t.region.code] ?? []).join(", ") || "–"}
+                      </span>
+                    </Td>
                     <Td className="text-right tabular-nums">{t.teams}</Td>
                     <Td className="text-right tabular-nums text-fg-muted">
                       {perRegion.get(t.region.id) ?? 0}

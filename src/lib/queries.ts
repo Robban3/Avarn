@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { teamScope } from "./authz";
 import type { SessionUser } from "./session";
-import { CERT_WARNING_DAYS } from "./domain";
+import { getSettings } from "./settings";
 
 /**
  * Återkommande databasfrågor. Samlade här så att varje vy använder samma
@@ -34,11 +34,13 @@ export async function visibleTeamIds(user: SessionUser) {
 /** Certifikat som går ut inom varningsfönstret, eller redan har gått ut. */
 export async function expiringCertifications(
   user: SessionUser,
-  withinDays = CERT_WARNING_DAYS,
+  /** Utelämnas för den inställda varningsgränsen. */
+  withinDays?: number,
 ) {
+  const dagar = withinDays ?? (await getSettings()).certWarningDays;
   const teamIds = await visibleTeamIds(user);
   const limit = new Date();
-  limit.setDate(limit.getDate() + withinDays);
+  limit.setDate(limit.getDate() + dagar);
 
   const teams = await db.team.findMany({
     where: { id: { in: teamIds } },

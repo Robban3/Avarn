@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
-import { CERT_WARNING_DAYS } from "@/lib/domain";
+import { getSettings } from "@/lib/settings";
 import { daysUntil } from "@/lib/format";
 
 /**
@@ -17,7 +17,7 @@ import { daysUntil } from "@/lib/format";
  * 7 dagar), så att en daglig körning inte fyller meddelandelistan.
  */
 
-const THRESHOLDS = [CERT_WARNING_DAYS, 30, 7];
+
 
 /** Godkänner anropet om nyckeln stämmer, oavsett vilket huvud den kom i. */
 function isAuthorised(request: NextRequest) {
@@ -48,6 +48,13 @@ export async function POST(request: NextRequest) {
   if (!isAuthorised(request)) {
     return Response.json({ error: "Ogiltig nyckel." }, { status: 401 });
   }
+
+  // Den yttersta gränsen är den inställda; 30 och 7 dagar är de
+  // påminnelser som alltid går ut när det börjar bli kort om tid.
+  const { certWarningDays } = await getSettings();
+  const THRESHOLDS = [certWarningDays, 30, 7].filter(
+    (t, i, alla) => alla.indexOf(t) === i,
+  );
 
   const limit = new Date();
   limit.setDate(limit.getDate() + Math.max(...THRESHOLDS));

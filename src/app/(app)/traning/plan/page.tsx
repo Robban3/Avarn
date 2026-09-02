@@ -6,12 +6,11 @@ import { ClipboardIcon, CheckCircleIcon } from "@/components/icons";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
 import { can, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { formatShortDate, daysUntil } from "@/lib/format";
 import {
   EXERCISE_STATUS_LABELS,
   PLAN_STATUS_LABELS,
-  SEARCH_ENVIRONMENTS,
-  TARGET_ODORS,
 } from "@/lib/domain";
 import { AddExerciseForm, NewPlanForm } from "./plan-forms";
 
@@ -28,6 +27,7 @@ function planDefaults() {
 
 export default async function TrainingPlanPage() {
   const user = await requireUser();
+  const installningar = await getSettings();
   const unread = await unreadNotificationCount(user.id);
   const manages = can(user, "plan:manage");
 
@@ -202,8 +202,8 @@ export default async function TrainingPlanPage() {
                   <div className="border-t border-line-soft">
                     <AddExerciseForm
                       planId={plan.id}
-                      environments={SEARCH_ENVIRONMENTS}
-                      targetOdors={TARGET_ODORS}
+                      environments={installningar.searchEnvironments}
+                      targetOdors={installningar.targetOdors}
                     />
                   </div>
                 ) : null}

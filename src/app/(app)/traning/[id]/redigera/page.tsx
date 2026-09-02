@@ -4,11 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
 import { canEditSession, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
-import {
-  SEARCH_ENVIRONMENTS,
-  TARGET_ODORS,
-  TRAINING_AREAS,
-} from "@/lib/domain";
+import { getSettings } from "@/lib/settings";
 import { SessionForm } from "../../nytt/session-form";
 import { updateSession } from "../../actions";
 
@@ -41,6 +37,7 @@ export default async function EditSessionPage({
 }: PageProps<"/traning/[id]/redigera">) {
   const { id } = await params;
   const user = await requireCapability("session:create");
+  const installningar = await getSettings();
   const unread = await unreadNotificationCount(user.id);
 
   const session = await db.trainingSession.findFirst({
@@ -92,9 +89,9 @@ export default async function EditSessionPage({
           label: `${t.dog.name} · ${t.handler.name}`,
         }))}
         disciplines={disciplines.map((d) => ({ id: d.id, label: d.name }))}
-        trainingAreas={TRAINING_AREAS}
-        environments={SEARCH_ENVIRONMENTS}
-        targetOdors={TARGET_ODORS}
+        trainingAreas={installningar.trainingAreas}
+        environments={installningar.searchEnvironments}
+        targetOdors={installningar.targetOdors}
         plannedExercises={[]}
         defaults={{ date: "", startTime: "", endTime: "" }}
       />

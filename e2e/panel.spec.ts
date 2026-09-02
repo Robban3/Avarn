@@ -114,3 +114,98 @@ test("hundföraren kommer inte åt exporten", async ({ page }) => {
   await page.goto("/panel/export?vy=ekipage");
   await expect(page).toHaveURL(/\/nekad/);
 });
+
+/**
+ * En inställning är bara en inställning om den slår igenom någon
+ * annanstans. Proven nedan ändrar ett värde och kontrollerar effekten på
+ * en annan sida, inte att formuläret ser ut att spara.
+ */
+
+test("varningsgränsen slår igenom på certifikatsidan", async ({ page }) => {
+  await loggaIn(page, KONTON.admin);
+  await page.goto("/panel/installningar");
+
+  const falt = page.getByLabel("Varning före certifikat går ut");
+  await expect(falt).toHaveValue("60");
+
+  await falt.fill("20");
+  await falt.locator("xpath=ancestor::form").getByRole("button", { name: "Spara" }).click();
+  await expect(page.getByText("Varning före certifikat går ut sparad.")).toBeVisible();
+
+  await page.goto("/panel/certifikat");
+  // Gränsen syns både i underrubriken och i kortets rubrik – båda ska följa
+  // med, så leta upp den ena uttryckligen i stället för att matcha brett.
+  await expect(
+    page.getByRole("heading", { name: /Går ut inom 20 dagar/ }),
+  ).toBeVisible();
+
+  // Tillbaka till standard, så att provet inte färgar av sig på nästa.
+  await page.goto("/panel/installningar");
+  await page
+    .getByLabel("Varning före certifikat går ut")
+    .locator("xpath=ancestor::div[1]")
+    .getByRole("button", { name: "Återställ till standard" })
+    .click();
+  await expect(page.getByText(/återställd till 60/)).toBeVisible();
+
+  await page.goto("/panel/certifikat");
+  await expect(
+    page.getByRole("heading", { name: /Går ut inom 60 dagar/ }),
+  ).toBeVisible();
+});
+
+test("en ny sökmiljö dyker upp i förarens formulär", async ({ page }) => {
+  await loggaIn(page, KONTON.admin);
+  await page.goto("/panel/installningar");
+
+  const ruta = page.getByLabel("Sökmiljöer");
+  const fore = (await ruta.inputValue()).trim();
+  await ruta.fill(`${fore}\nHamnområde`);
+  await ruta.locator("xpath=ancestor::form").getByRole("button", { name: "Spara" }).click();
+  await expect(page.getByText("Sökmiljöer sparad.")).toBeVisible();
+
+  // Vänta tills sidan visar att värdet avviker från standard – då är
+  // skrivningen klar, och provet mäter genomslaget och inte hur snabb
+  // maskinen råkar vara.
+  await page.reload();
+  await expect(
+    page.getByLabel("Sökmiljöer").locator("xpath=ancestor::div[1]"),
+  ).toContainText("Ändrad av");
+
+  await loggaIn(page, KONTON.hundforare);
+  await page.goto("/traning/nytt");
+  // Sökmiljön är ett fritextfält med förslag i en datalist, inte en select.
+  await expect(
+    page.locator('datalist#environments option[value="Hamnområde"]'),
+  ).toHaveCount(1);
+
+  await loggaIn(page, KONTON.admin);
+  await page.goto("/panel/installningar");
+  await page
+    .getByLabel("Sökmiljöer")
+    .locator("xpath=ancestor::div[1]")
+    .getByRole("button", { name: "Återställ till standard" })
+    .click();
+  await expect(page.getByText(/Sökmiljöer återställd/)).toBeVisible();
+});
+
+test("regionchefen når inte inställningarna", async ({ page }) => {
+  await loggaIn(page, KONTON.regional);
+  await page.goto("/panel/installningar");
+  await expect(page).toHaveURL(/\/nekad/);
+});
+
+test("kartan ritas ur riktiga länsgränser", async ({ page }) => {
+  await loggaIn(page, KONTON.admin);
+  await page.goto("/panel/regioner");
+
+  const banor = page.locator('svg[aria-label="Ekipage per region"] path');
+  await expect(banor).toHaveCount(5);
+
+  // En trasig generering ger tomma eller stympade banor – det ska fångas
+  // här och inte upptäckas med ögat på en skärmbild.
+  for (let i = 0; i < 5; i += 1) {
+    const d = await banor.nth(i).getAttribute("d");
+    expect((d ?? "").length).toBeGreaterThan(500);
+  }
+});

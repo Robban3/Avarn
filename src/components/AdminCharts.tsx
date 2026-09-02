@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { formatNumber } from "@/lib/format";
+import { KARTA_VIEWBOX, REGION_BANOR } from "@/lib/sverige-karta";
 
 /**
  * Diagrammen i adminpanelen. Alla ritas som SVG på servern – ingen
@@ -7,19 +8,23 @@ import { formatNumber } from "@/lib/format";
  *
  * Färgerna är inte valda på känsla utan körda genom validering mot den
  * mörka kortytan (#161a1c): ljushetsband, kromatröskel, separation vid
- * färgblindhet och kontrast. Designunderlagets egen palett föll på två
- * punkter – den har två blå och två orange toner intill varandra, och den
- * mörkblå syns knappt mot ytan – så segmentfärgerna här är omsteg av
- * samma idé som klarar proven.
+ * färgblindhet och kontrast mot ytan.
+ *
+ * Turkos, blå och orange först – det är dem ringen känns igen på i
+ * designunderlaget. Underlagets två sista toner var däremot en andra blå
+ * och en andra orange intill de första, och just den kombinationen
+ * kollapsar: orange mot bärnsten hamnade på ΔE 10,6 för normalseende, och
+ * den mörkblå på 2,17:1 mot kortytan. De två platserna är därför omstegade
+ * till violett och bärnsten, som ligger klart isär.
  */
 
 /** Kategorisk palett, plats 1–5 i fast ordning. Aldrig omkastad. */
 export const SERIES = [
+  "#2aa79c",
   "#3987e5",
   "#d95926",
-  "#199e70",
+  "#9085e9",
   "#c98500",
-  "#d55181",
 ] as const;
 
 /** Sekventiell turkos skala för kartan, låg → hög. */
@@ -334,85 +339,15 @@ export function BarList({
 /* ------------------------------------------------------------ Sverigekarta */
 
 /**
- * Stiliserad karta – en igenkännbar siluett, inte en geografisk projektion.
- *
- * Siluetten beskrivs som tvärsnitt (y, vänsterkant, högerkant) och
- * regionerna byggs ur samma tvärsnitt. Det är poängen: delarna kan inte
- * glida isär eller överlappa, eftersom de delar exakt samma kantlinje.
+ * Karta över ekipagen per region. Banorna kommer från Sveriges riktiga
+ * länsgränser (öppna data, se data/KALLA.md) och genereras av
+ * scripts/generate-sweden-map.mjs – regionerna är alltså landet självt,
+ * inte en ritad symbol. Färgen visar antal ekipage på en skala i en enda
+ * ton, så att mörkare läses som fler utan förklaring.
  */
-const TVARSNITT: [y: number, vanster: number, hoger: number][] = [
-  // Norr är smalt och lutar österut; öster om Mälaren skjuter kusten ut
-  // (Uppland och Stockholm), och söderut smalnar landet mot Skåne.
-  [4, 52, 60],
-  [16, 44, 62],
-  [30, 36, 63],
-  [46, 30, 64],
-  [62, 27, 66],
-  [78, 26, 69],
-  [92, 27, 73],
-  [104, 29, 76],
-  [116, 30, 72],
-  [128, 30, 66],
-  [142, 31, 62],
-  [156, 33, 57],
-  [170, 36, 52],
-  [182, 40, 48],
-  [188, 42, 46],
-];
-
-/** Interpolerar kanterna vid ett godtyckligt y. */
-function kant(y: number): [number, number] {
-  const i = TVARSNITT.findIndex(([yy]) => yy >= y);
-  if (i <= 0) return [TVARSNITT[0][1], TVARSNITT[0][2]];
-  const [y0, v0, h0] = TVARSNITT[i - 1];
-  const [y1, v1, h1] = TVARSNITT[i];
-  const t = (y - y0) / (y1 - y0);
-  return [v0 + (v1 - v0) * t, h0 + (h1 - h0) * t];
-}
-
-/** Punkterna längs siluetten mellan två y-värden. */
-function snitt(fran: number, till: number) {
-  const ys = [
-    fran,
-    ...TVARSNITT.map(([y]) => y).filter((y) => y > fran && y < till),
-    till,
-  ];
-  return ys.map((y) => [y, ...kant(y)] as [number, number, number]);
-}
-
-/** Ett band över hela bredden, t.ex. Nord eller Mitt. */
-function band(fran: number, till: number) {
-  const rader = snitt(fran, till);
-  const vanster = rader.map(([y, v]) => `${v},${y}`);
-  const hoger = [...rader].reverse().map(([y, , h]) => `${h},${y}`);
-  return `M${[...vanster, ...hoger].join(" ")}Z`;
-}
-
-/** Halva bandet – söder om Mälaren delas landet i väst och öst. */
-function halva(fran: number, till: number, sida: "v" | "h") {
-  const rader = snitt(fran, till);
-  const mitt = rader.map(([y, v, h]) => [y, (v + h) / 2] as const);
-  if (sida === "v") {
-    const yttre = rader.map(([y, v]) => `${v},${y}`);
-    const inre = [...mitt].reverse().map(([y, m]) => `${m},${y}`);
-    return `M${[...yttre, ...inre].join(" ")}Z`;
-  }
-  const inre = mitt.map(([y, m]) => `${m},${y}`);
-  const yttre = [...rader].reverse().map(([y, , h]) => `${h},${y}`);
-  return `M${[...inre, ...yttre].join(" ")}Z`;
-}
-
-const REGIONFORMER: Record<string, string> = {
-  NORD: band(4, 78),
-  MITT: band(78, 116),
-  VAST: halva(116, 156, "v"),
-  OST: halva(116, 156, "h"),
-  SYD: band(156, 188),
-};
-
 export function SwedenMap({
   regions,
-  className = "h-[150px] w-auto shrink-0",
+  className = "h-[190px] w-auto shrink-0",
 }: {
   regions: { code: string; name: string; teams: number }[];
   className?: string;
@@ -423,13 +358,13 @@ export function SwedenMap({
 
   return (
     <svg
-      viewBox="24 0 54 194"
+      viewBox={KARTA_VIEWBOX}
       className={className}
       role="img"
       aria-label="Ekipage per region"
     >
       {regions.map((r) => {
-        const d = REGIONFORMER[r.code];
+        const d = REGION_BANOR[r.code];
         if (!d) return null;
         return (
           <path
@@ -437,7 +372,8 @@ export function SwedenMap({
             d={d}
             fill={steg(r.teams)}
             stroke={SURFACE}
-            strokeWidth="1.2"
+            strokeWidth="1.8"
+            fillRule="evenodd"
           >
             <title>{`${r.name}: ${r.teams} ekipage`}</title>
           </path>

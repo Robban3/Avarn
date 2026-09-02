@@ -3,7 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
 import { seesAllRegions } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { MISSION_TYPES } from "@/lib/domain";
+import { getSettings } from "@/lib/settings";
+
 import { MissionForm } from "./mission-form";
 
 export const metadata: Metadata = { title: "Nytt uppdrag" };
@@ -20,6 +21,7 @@ function defaultDateTime() {
 
 export default async function NewMissionPage() {
   const user = await requireCapability("mission:create");
+  const installningar = await getSettings();
   const unread = await unreadNotificationCount(user.id);
 
   const [regions, customers, disciplines] = await Promise.all([
@@ -45,7 +47,7 @@ export default async function NewMissionPage() {
         regions={regions.map((r) => ({ id: r.id, label: r.name }))}
         customers={customers.map((c) => ({ id: c.id, label: c.name }))}
         disciplines={disciplines.map((d) => ({ id: d.id, label: d.name }))}
-        missionTypes={MISSION_TYPES}
+        missionTypes={installningar.missionTypes}
         defaults={{
           ...defaultDateTime(),
           regionId: user.regionId ?? regions[0]?.id ?? "",

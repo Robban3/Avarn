@@ -61,6 +61,7 @@ model User {
   certifications        Certification[]
   uploads               MediaAsset[]           @relation("MediaUploader")
   profilePhotos         MediaAsset[]           @relation("ProfilePhotos")
+  settingsChanged       Setting[]              @relation("SettingEditor")
   auditLogs             AuditLog[]
 
   @@index([role])
@@ -526,4 +527,15 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+/// Verksamhetens inställningar. Värdet är JSON, så att både ett tal och en
+/// lista ryms utan en kolumn per inställning. Saknas nyckeln gäller
+/// standardvärdet i src/lib/domain.ts.
+model Setting {
+  key         String   @id
+  value       String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("SettingEditor", fields: [updatedById], references: [id])
 }

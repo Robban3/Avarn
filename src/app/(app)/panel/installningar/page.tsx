@@ -1,35 +1,44 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/AdminShell";
 import { ChartCard } from "@/components/AdminCharts";
-import { StatusDot, Table, Td, Th } from "@/components/PanelUI";
+import { StatusDot, Td, Th } from "@/components/PanelUI";
 import { requireCapability } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { usesCloudStorage, BUCKET } from "@/lib/storage";
+import { formatRelative } from "@/lib/format";
 import {
-  CERT_WARNING_DAYS,
-  MISSION_TYPES,
-  SEARCH_ENVIRONMENTS,
-  TARGET_ODORS,
-  TRAINING_AREAS,
-} from "@/lib/domain";
+  andradeNycklar,
+  getSettings,
+  RUBRIKER,
+  type Settings,
+} from "@/lib/settings";
+import { SettingForm } from "./setting-form";
 
 export const metadata: Metadata = { title: "Inställningar" };
 
-/**
- * Vad systemet är inställt på just nu. Värdena är avsiktligt läsbara men
- * inte redigerbara härifrån – de sätts i miljövariabler och i koden, och
- * en knapp som låtsas ändra dem vore värre än ingen knapp alls. Sidan
- * säger i stället var var sak ställs in.
- */
+const BESKRIVNINGAR: Record<keyof Settings, string> = {
+  certWarningDays:
+    "Hur långt före slutdatum ett certifikat räknas som snart utgånget, och när påminnelsen går ut.",
+  trainingAreas:
+    "Förslagen i rutan Träningsområde när ett pass rapporteras. Ett värde per rad.",
+  searchEnvironments:
+    "Förslagen i rutan Sökmiljö. Ett värde per rad; föraren kan fortfarande skriva något eget.",
+  targetOdors: "Förslagen i rutan Måldoft. Ett värde per rad.",
+  missionTypes: "Förslagen i rutan Uppdragstyp när ett uppdrag läggs upp.",
+};
+
 export default async function PanelSettingsPage() {
   const admin = await requireCapability("admin:manage");
 
-  const [regioner, certTyper, inriktningar, media] = await Promise.all([
-    db.region.count(),
-    db.certificationType.count(),
-    db.searchDiscipline.count(),
-    db.mediaAsset.count(),
-  ]);
+  const [installningar, andrade, regioner, certTyper, inriktningar, media] =
+    await Promise.all([
+      getSettings(),
+      andradeNycklar(),
+      db.region.count(),
+      db.certificationType.count(),
+      db.searchDiscipline.count(),
+      db.mediaAsset.count(),
+    ]);
 
   const moln = usesCloudStorage();
 
@@ -38,9 +47,7 @@ export default async function PanelSettingsPage() {
       namn: "Bilagor lagras i",
       varde: moln ? `Supabase Storage (${BUCKET})` : "Filsystemet på servern",
       ok: moln,
-      stalls: moln
-        ? "SUPABASE_URL och SUPABASE_SERVICE_ROLE_KEY"
-        : "Sätt SUPABASE_URL och SUPABASE_SERVICE_ROLE_KEY för molnlagring",
+      stalls: "SUPABASE_URL och SUPABASE_SERVICE_ROLE_KEY",
     },
     {
       namn: "Sparade bilagor",
@@ -49,32 +56,35 @@ export default async function PanelSettingsPage() {
       stalls: "Laddas upp från träningspass, rapporter och profiler",
     },
     {
-      namn: "Varning före certifikat går ut",
-      varde: `${CERT_WARNING_DAYS} dagar`,
-      ok: true,
-      stalls: "CERT_WARNING_DAYS i src/lib/domain.ts",
-    },
-    {
       namn: "Påminnelsejobb",
       varde: "Kräver nyckel",
       ok: true,
       stalls: "CRON_KEY, anropas på /api/cron",
     },
+    {
+      namn: "Databas",
+      varde: "Ansluten",
+      ok: true,
+      stalls: "DATABASE_URL och DIRECT_URL",
+    },
   ];
 
-  const listor = [
-    { namn: "Träningsområden", varden: TRAINING_AREAS },
-    { namn: "Sökmiljöer", varden: SEARCH_ENVIRONMENTS },
-    { namn: "Måldofter", varden: TARGET_ODORS },
-    { namn: "Uppdragstyper", varden: MISSION_TYPES },
-  ];
+  /** Vem som ändrade en inställning, formaterat för formuläret. */
+  const andradAv = (nyckel: keyof Settings) => {
+    const rad = andrade.get(nyckel);
+    if (!rad) return undefined;
+    return {
+      av: rad.updatedBy?.name ?? "okänd",
+      nar: formatRelative(rad.updatedAt),
+    };
+  };
 
   return (
     <AdminShell
       user={admin}
       aktiv="/panel/installningar"
       title="Inställningar"
-      subtitle="Systemets nuvarande läge och var varje sak ställs in"
+      subtitle={`${andrade.size} av 5 inställningar avviker från standard`}
     >
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <Ruta rubrik="Regioner" varde={regioner} />
@@ -82,51 +92,70 @@ export default async function PanelSettingsPage() {
         <Ruta rubrik="Certifikattyper" varde={certTyper} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+        <ChartCard title="Verksamhetens värden">
+          <p className="mb-1 text-[12px] text-fg-muted">
+            Ändringarna slår igenom direkt i hela appen och loggas i
+            systemloggen. Återställning tar bort det sparade värdet, så att
+            standardvärdet gäller igen.
+          </p>
+
+          <SettingForm
+            nyckel="certWarningDays"
+            rubrik={RUBRIKER.certWarningDays}
+            beskrivning={BESKRIVNINGAR.certWarningDays}
+            varde={installningar.certWarningDays}
+            typ="tal"
+            andrad={andradAv("certWarningDays")}
+          />
+          {(
+            [
+              "trainingAreas",
+              "searchEnvironments",
+              "targetOdors",
+              "missionTypes",
+            ] as const
+          ).map((nyckel) => (
+            <SettingForm
+              key={nyckel}
+              nyckel={nyckel}
+              rubrik={RUBRIKER[nyckel]}
+              beskrivning={BESKRIVNINGAR[nyckel]}
+              varde={installningar[nyckel]}
+              typ="lista"
+              andrad={andradAv(nyckel)}
+            />
+          ))}
+        </ChartCard>
+
         <ChartCard title="Drift">
-          <Table>
+          <p className="mb-3 text-[12px] text-fg-muted">
+            Sätts vid driftsättning och går inte att ändra härifrån – en
+            knapp kan inte byta en miljövariabel i en process som redan kör.
+          </p>
+          {/* Egen tabell utan minsta bredd – den delade svämmar över i
+              det här smala kortet. */}
+          <table className="w-full border-collapse text-left">
             <thead>
               <tr>
                 <Th>Inställning</Th>
-                <Th>Nuvarande värde</Th>
                 <Th>Ställs in via</Th>
               </tr>
             </thead>
             <tbody>
               {drift.map((d) => (
                 <tr key={d.namn}>
-                  <Td className="font-medium">{d.namn}</Td>
                   <Td>
+                    <span className="block font-medium">{d.namn}</span>
                     <StatusDot ok={d.ok}>{d.varde}</StatusDot>
                   </Td>
-                  <Td className="text-fg-muted">{d.stalls}</Td>
+                  <Td className="break-words text-[12px] text-fg-muted">
+                    {d.stalls}
+                  </Td>
                 </tr>
               ))}
             </tbody>
-          </Table>
-        </ChartCard>
-
-        <ChartCard title="Valbara värden i formulären">
-          <Table>
-            <thead>
-              <tr>
-                <Th>Lista</Th>
-                <Th>Värden</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {listor.map((l) => (
-                <tr key={l.namn}>
-                  <Td className="whitespace-nowrap font-medium">{l.namn}</Td>
-                  <Td className="text-fg-muted">{l.varden.join(", ")}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          <p className="mt-3 text-[12px] text-fg-dim">
-            Listorna är förslag i formulären – fritext är fortfarande
-            tillåtet, så en ny sökmiljö kan skrivas in direkt av föraren.
-          </p>
+          </table>
         </ChartCard>
       </div>
     </AdminShell>

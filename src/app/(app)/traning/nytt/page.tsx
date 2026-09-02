@@ -5,11 +5,7 @@ import { PawIcon } from "@/components/icons";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
 import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
-import {
-  SEARCH_ENVIRONMENTS,
-  TARGET_ODORS,
-  TRAINING_AREAS,
-} from "@/lib/domain";
+import { getSettings } from "@/lib/settings";
 import { SessionForm } from "./session-form";
 import { createSession } from "../actions";
 
@@ -39,6 +35,7 @@ function defaultDateTime() {
 
 export default async function NewSessionPage() {
   const user = await requireCapability("session:create");
+  const installningar = await getSettings();
   const unread = await unreadNotificationCount(user.id);
 
   const [teams, disciplines, exercises] = await Promise.all([
@@ -86,9 +83,9 @@ export default async function NewSessionPage() {
           label: `${t.dog.name} · ${t.handler.name}`,
         }))}
         disciplines={disciplines.map((d) => ({ id: d.id, label: d.name }))}
-        trainingAreas={TRAINING_AREAS}
-        environments={SEARCH_ENVIRONMENTS}
-        targetOdors={TARGET_ODORS}
+        trainingAreas={installningar.trainingAreas}
+        environments={installningar.searchEnvironments}
+        targetOdors={installningar.targetOdors}
         plannedExercises={exercises.map((e) => ({
           id: e.id,
           title: e.title,

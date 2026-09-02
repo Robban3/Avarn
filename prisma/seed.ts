@@ -47,6 +47,9 @@ const yearsAgo = (years: number, month = 3, day = 12) =>
 async function reset() {
   // Ordningen följer beroendena; onDelete Cascade tar det mesta men vi är
   // explicita så att seed går att köra om på en befintlig databas.
+  // Inställningarna nollställs också, annars läcker ett ändrat värde
+  // mellan körningar och seed ger inte längre ett känt utgångsläge.
+  await db.setting.deleteMany();
   await db.auditLog.deleteMany();
   await db.notification.deleteMany();
   await db.followUp.deleteMany();

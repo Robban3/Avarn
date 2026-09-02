@@ -4,8 +4,8 @@ import { teamScope, seesAllRegions } from "./authz";
 import type { SessionUser } from "./session";
 import { durationMinutes } from "./format";
 import { startOfMonth, startOfPreviousMonth } from "./stats";
+import { getSettings } from "./settings";
 import {
-  CERT_WARNING_DAYS,
   DISCIPLINE_CERT,
   PERIODER,
   TEAM_REQUIRED_CERTS,
@@ -216,7 +216,8 @@ export async function certificationOverview(user: SessionUser) {
   });
 
   const nu = Date.now();
-  const grans = nu + CERT_WARNING_DAYS * 86_400_000;
+  const { certWarningDays } = await getSettings();
+  const grans = nu + certWarningDays * 86_400_000;
 
   const alla = [
     ...teams.flatMap((t) =>
@@ -268,5 +269,5 @@ export async function certificationOverview(user: SessionUser) {
     ),
   );
 
-  return { utgangna, snart, saknade, ejTillgangliga, teams };
+  return { utgangna, snart, saknade, ejTillgangliga, teams, certWarningDays };
 }
