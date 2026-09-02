@@ -185,3 +185,42 @@ export function initials(name: string) {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/**
+ * Början på en månad i svensk tid, förskjutet `offset` månader.
+ *
+ * new Date(år, månad, 1) ger midnatt i serverns tidszon, alltså 00:00 UTC –
+ * men etiketten sätts i svensk tid. Ett pass 1 september 00:30 svensk tid
+ * är 31 augusti 22:30 UTC och hamnade då i augustistapeln. Gränsen måste
+ * räknas i samma tidszon som etiketten.
+ */
+export function startOfMonthLocal(date = new Date(), offset = 0) {
+  const [ar, manad] = dateKey(date).split("-").map(Number);
+  // Räkna om till ett löpande månadsnummer så att årsskiftet sköter sig självt.
+  const total = ar * 12 + (manad - 1) + offset;
+  const nyttAr = Math.floor(total / 12);
+  const nyManad = total - nyttAr * 12 + 1;
+  return fromLocalInput(
+    `${String(nyttAr).padStart(4, "0")}-${String(nyManad).padStart(2, "0")}-01T00:00`,
+  );
+}
+
+/**
+ * De `count` senaste månaderna som gränser och etiketter.
+ *
+ * Både gräns och etikett räknas i svensk tid – annars hamnar ett pass
+ * strax efter midnatt den första i föregående månads stapel.
+ */
+export function monthsBack(count: number, from = new Date()) {
+  const months: { start: Date; end: Date; label: string }[] = [];
+  const fmt = new Intl.DateTimeFormat("sv-SE", {
+    month: "short",
+    timeZone: TZ,
+  });
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const start = startOfMonthLocal(from, -i);
+    const end = startOfMonthLocal(from, -i + 1);
+    months.push({ start, end, label: fmt.format(start).replace(".", "") });
+  }
+  return months;
+}

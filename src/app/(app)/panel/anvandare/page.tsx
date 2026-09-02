@@ -17,8 +17,20 @@ export default async function PanelUsersPage() {
   const admin = await requireCapability("admin:manage");
 
   const [users, regions] = await Promise.all([
+    // select, inte include – annars följer passwordHash med.
     db.user.findMany({
-      include: { region: true, _count: { select: { teams: true } } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        lastLoginAt: true,
+        createdAt: true,
+        regionId: true,
+        region: true,
+        _count: { select: { teams: true } },
+      },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     }),
     db.region.findMany({ orderBy: { sortOrder: "asc" } }),

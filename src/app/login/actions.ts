@@ -38,10 +38,15 @@ export async function login(
   const genericError = "Fel e-postadress eller lösenord.";
 
   if (!user || !user.active) {
+    // Adressen loggas bara när den hör till ett konto. Skrivs lösenordet i
+    // fel fält hamnar det annars i klartext i systemloggen.
     await audit({
+      userId: user?.id,
       action: "DENIED",
       entityType: "Login",
-      detail: `Misslyckad inloggning för ${email}`,
+      detail: user
+        ? `Inloggningsförsök på avstängt konto: ${email}`
+        : "Misslyckad inloggning, okänd adress",
     });
     return { error: genericError };
   }

@@ -5,6 +5,7 @@ import { Table, Td, Th } from "@/components/PanelUI";
 import { requireCapability } from "@/lib/auth";
 import { coverageByRegion, capacityByDiscipline } from "@/lib/stats";
 import { db } from "@/lib/db";
+import { teamScope } from "@/lib/authz";
 import { REGION_LAN } from "@/lib/domain";
 
 export const metadata: Metadata = { title: "Regioner" };
@@ -16,23 +17,27 @@ export default async function PanelRegionsPage() {
     coverageByRegion(user),
     capacityByDiscipline(user),
     // Ekipage som är tillgängliga just nu – kapaciteten man faktiskt kan
-    // ta ut, inte bara den som finns på pappret.
+    // ta ut, inte bara den som finns på pappret. Avgränsningen ligger i
+    // frågan: annars räknades hela landets ekipage in i den egna regionen.
     db.teamAvailability.findMany({
       where: {
         kind: "AVAILABLE",
         startAt: { lte: new Date() },
         endAt: { gte: new Date() },
+        team: { AND: [teamScope(user), { status: "ACTIVE" }] },
       },
       select: { teamId: true, team: { select: { regionId: true } } },
     }),
   ]);
 
+  // Räkna ekipage, inte perioder. Två överlappande tillgänglighetsrader för
+  // samma ekipage gav annars 2, och talet kunde bli större än "Ekipage".
+  const raknade = new Set<string>();
   const perRegion = new Map<string, number>();
   for (const a of tillgangliga) {
-    perRegion.set(
-      a.team.regionId,
-      (perRegion.get(a.team.regionId) ?? 0) + 1,
-    );
+    if (raknade.has(a.teamId)) continue;
+    raknade.add(a.teamId);
+    perRegion.set(a.team.regionId, (perRegion.get(a.team.regionId) ?? 0) + 1);
   }
 
   const totalt = tackning.reduce((s, t) => s + t.teams, 0);
@@ -57,8 +62,8 @@ export default async function PanelRegionsPage() {
             />
           </div>
           <p className="mt-2 text-center text-[11px] text-fg-dim">
-            Mörkare ton betyder fler ekipage. Länsgränserna är öppna data,
-            se data/KALLA.md.
+            Ljusare ton betyder fler ekipage, grått betyder inga.
+            Länsgränserna är öppna data, se data/KALLA.md.
           </p>
         </ChartCard>
 
@@ -70,7 +75,7 @@ export default async function PanelRegionsPage() {
                   <Th>Region</Th>
                   <Th className="text-right">Ekipage</Th>
                   <Th className="text-right">Tillgängliga nu</Th>
-                  <Th className="text-right">Uppdrag 30 dagar</Th>
+                  <Th className="text-right">Uppdrag i regionen</Th>
                   <Th className="text-right">Träningstimmar</Th>
                 </tr>
               </thead>

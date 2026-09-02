@@ -1,8 +1,10 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { getSessionUser, type SessionUser } from "./session";
 import { assertCan, can, type Action } from "./authz";
+import type { Role } from "./domain";
 
 /**
  * Serverfunktioner som varje skyddad sida och server action börjar med.
@@ -10,10 +12,44 @@ import { assertCan, can, type Action } from "./authz";
  * själva också – så att data inte kan nås genom att gissa en adress.
  */
 
+/**
+ * Roll, region och kontostatus läses ur databasen, inte ur sessionen.
+ *
+ * Kakan lever i tolv timmar. Utan den här uppslagningen behöll en avstängd
+ * eller nedgraderad användare sina rättigheter tills token gick ut. React
+ * cache gör det till en fråga per förfrågan hur många gånger requireUser
+ * än anropas under samma rendering.
+ */
+const farskAnvandare = cache(async (id: string) =>
+  db.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      regionId: true,
+      active: true,
+    },
+  }),
+);
+
 export async function requireUser(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
-  return user;
+  const session = await getSessionUser();
+  if (!session) redirect("/login");
+
+  const record = await farskAnvandare(session.id);
+  // Utloggningsvägen, inte /login: kakan är fortfarande giltig, och
+  // mellanlagret skulle skicka tillbaka besökaren till /hem i en slinga.
+  if (!record || !record.active) redirect("/logga-ut");
+
+  return {
+    id: record.id,
+    name: record.name,
+    email: record.email,
+    role: record.role as Role,
+    regionId: record.regionId,
+  };
 }
 
 /** Kräver inloggning och en viss behörighet; annars visas nekad-sidan. */
@@ -49,7 +85,7 @@ export async function currentUserRecord() {
     where: { id: user.id },
     include: { region: true, handlerProfile: true },
   });
-  if (!record || !record.active) redirect("/login");
+  if (!record || !record.active) redirect("/logga-ut");
   return record;
 }
 

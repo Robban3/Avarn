@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { seesAllRegions, teamScope } from "./authz";
 import type { SessionUser } from "./session";
-import { durationMinutes } from "./format";
+import { durationMinutes, monthsBack, startOfMonthLocal } from "./format";
 import { certStatus } from "./certifications";
 import { getSettings } from "./settings";
 
@@ -34,30 +34,16 @@ export function previousRollingFrom(days = FONSTER_DAGAR, date = new Date()) {
 }
 
 export function startOfMonth(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  return startOfMonthLocal(date);
 }
 
-export function monthsBack(count: number, from = new Date()) {
-  const months: { start: Date; end: Date; label: string }[] = [];
-  const fmt = new Intl.DateTimeFormat("sv-SE", {
-    month: "short",
-    timeZone: "Europe/Stockholm",
-  });
-  for (let i = count - 1; i >= 0; i -= 1) {
-    const start = new Date(from.getFullYear(), from.getMonth() - i, 1);
-    const end = new Date(from.getFullYear(), from.getMonth() - i + 1, 1);
-    months.push({
-      start,
-      end,
-      label: fmt.format(start).replace(".", ""),
-    });
-  }
-  return months;
-}
+// Månadsgränserna är ren datumlogik och bor i format.ts, men hör hemma i
+// statistikens ordförråd – re-exporteras därför härifrån.
+export { monthsBack };
 
 /** Början på föregående månad. */
 export function startOfPreviousMonth(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  return startOfMonthLocal(date, -1);
 }
 
 /**
@@ -70,10 +56,6 @@ export async function periodStats(
   to?: Date,
 ) {
   const scope = teamScope(user);
-  const teamIds = (
-    await db.team.findMany({ where: scope, select: { id: true } })
-  ).map((t) => t.id);
-
   const period = to ? { gte: from, lt: to } : { gte: from };
 
   const [teamCount, sessions, missionCount, openFollowUps] = await Promise.all([
@@ -87,12 +69,23 @@ export async function periodStats(
         foundCount: true,
       },
     }),
-    db.missionAssignment.count({
-      where: {
-        teamId: { in: teamIds },
-        status: { in: ["ACCEPTED", "COMPLETED"] },
-        mission: { startAt: period },
-      },
+    // Uppdrag, inte tilldelningar: ett uppdrag med tre ekipage är ett
+    // uppdrag. Räknades tilldelningarna blev nyckeltalet tre gånger för
+    // högt för samma insats.
+    //
+    // Avgränsningen är ordagrant densamma som ringdiagrammets
+    // (missionsByDiscipline), så att nyckeltalet och ringen svarar på
+    // samma fråga. Den som ser hela landet ser alla uppdrag i perioden;
+    // övriga ser dem deras ekipage är på, frånsett de avböjda.
+    db.mission.count({
+      where: seesAllRegions(user)
+        ? { startAt: period }
+        : {
+            startAt: period,
+            assignments: {
+              some: { team: scope, status: { not: "DECLINED" } },
+            },
+          },
     }),
     db.followUp.count({ where: { team: scope, status: "OPEN" } }),
   ]);
@@ -190,46 +183,56 @@ export async function coverageByRegion(user: SessionUser) {
     orderBy: { sortOrder: "asc" },
   });
   const since = rollingFrom();
+  const regionIds = regions.map((r) => r.id);
 
-  return Promise.all(
-    regions.map(async (region) => {
-      const teamIds = (
-        await db.team.findMany({
-          where: { ...scope, regionId: region.id, status: "ACTIVE" },
-          select: { id: true },
-        })
-      ).map((t) => t.id);
-
-      const [missions, sessions] = await Promise.all([
-        db.mission.count({
-          where: { regionId: region.id, startAt: { gte: since } },
-        }),
-        db.trainingSession.findMany({
-          where: { teamId: { in: teamIds }, startAt: { gte: since } },
-          select: { startAt: true, endAt: true },
-        }),
-      ]);
-
-      return {
-        region,
-        teams: teamIds.length,
-        missions,
-        trainingHours: Math.round(
-          sessions.reduce((s, x) => s + durationMinutes(x.startAt, x.endAt), 0) /
-            60,
-        ),
-      };
+  // Tre frågor över alla regioner på en gång. Tidigare gick det en runda
+  // per region, och sidan anropar den här två gånger.
+  const [teamsPerRegion, missionsPerRegion, sessions] = await Promise.all([
+    db.team.groupBy({
+      by: ["regionId"],
+      where: { AND: [scope, { regionId: { in: regionIds }, status: "ACTIVE" }] },
+      _count: { _all: true },
     }),
+    db.mission.groupBy({
+      by: ["regionId"],
+      where: { regionId: { in: regionIds }, startAt: { gte: since } },
+      _count: { _all: true },
+    }),
+    db.trainingSession.findMany({
+      where: {
+        AND: [
+          { team: { AND: [scope, { status: "ACTIVE" }] } },
+          { team: { regionId: { in: regionIds } } },
+        ],
+        startAt: { gte: since },
+      },
+      select: { startAt: true, endAt: true, team: { select: { regionId: true } } },
+    }),
+  ]);
+
+  const antalEkipage = new Map(
+    teamsPerRegion.map((r) => [r.regionId, r._count._all]),
   );
+  const antalUppdrag = new Map(
+    missionsPerRegion.map((r) => [r.regionId, r._count._all]),
+  );
+  const minuter = new Map<string, number>();
+  for (const s of sessions) {
+    const id = s.team.regionId;
+    minuter.set(id, (minuter.get(id) ?? 0) + durationMinutes(s.startAt, s.endAt));
+  }
+
+  return regions.map((region) => ({
+    region,
+    teams: antalEkipage.get(region.id) ?? 0,
+    missions: antalUppdrag.get(region.id) ?? 0,
+    trainingHours: Math.round((minuter.get(region.id) ?? 0) / 60),
+  }));
 }
 
 /** Certifikat som kräver åtgärd, sorterade efter hur bråttom det är. */
 export async function certificationAlerts(user: SessionUser, take = 10) {
-  const teams = await db.team.findMany({
-    where: teamScope(user),
-    select: { id: true, dogId: true, handlerId: true },
-  });
-
+  const scope = teamScope(user);
   const { certWarningDays } = await getSettings();
   const limit = new Date();
   limit.setDate(limit.getDate() + certWarningDays);
@@ -237,10 +240,12 @@ export async function certificationAlerts(user: SessionUser, take = 10) {
   const certifications = await db.certification.findMany({
     where: {
       expiresAt: { lte: limit },
+      // Avgränsningen ligger i relationen i stället för i en id-lista.
+      // För administratör blev listan hela beståndet i varje fråga.
       OR: [
-        { teamId: { in: teams.map((t) => t.id) } },
-        { dogId: { in: teams.map((t) => t.dogId) } },
-        { userId: { in: teams.map((t) => t.handlerId) } },
+        { team: scope },
+        { dog: { teams: { some: scope } } },
+        { user: { teams: { some: scope } } },
       ],
     },
     include: {

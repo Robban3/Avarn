@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { notifyMany } from "@/lib/notify";
 import { isAllowedType, storeUpload } from "@/lib/media";
 import { formatDate } from "@/lib/format";
+import { addMonths, egetIntyg } from "@/lib/certifications";
 
 /**
  * Registrering och förnyelse av certifikat.
@@ -43,6 +44,26 @@ async function resolveSubject(
   if (!id) return null;
 
   const scope = teamScope(user);
+
+  // Ingen utfärdar ett intyg åt sig själv. Kontrollen hörde till
+  // kommentaren vid cert:manage i authz.ts men fanns bara där.
+  const forare =
+    kind === "team"
+      ? (
+          await db.team.findUnique({
+            where: { id },
+            select: { handlerId: true },
+          })
+        )?.handlerId ?? null
+      : kind === "dog"
+        ? (
+            await db.team.findFirst({
+              where: { dogId: id, handlerId: user.id },
+              select: { handlerId: true },
+            })
+          )?.handlerId ?? null
+        : null;
+  if (egetIntyg(user.id, { kind, id }, forare)) return null;
 
   if (kind === "team") {
     const team = await db.team.findFirst({
@@ -126,8 +147,7 @@ export async function createCertification(
       return { error: "Ogiltigt utgångsdatum." };
     }
   } else {
-    expiresAt = new Date(issuedAt);
-    expiresAt.setMonth(expiresAt.getMonth() + type.validityMonths);
+    expiresAt = addMonths(issuedAt, type.validityMonths);
   }
 
   if (expiresAt <= issuedAt) {
@@ -191,11 +211,21 @@ export async function renewCertification(formData: FormData) {
   assertCan(user, "cert:manage");
 
   const id = String(formData.get("certificationId") ?? "");
-  const existing = await db.certification.findUnique({
-    where: { id },
+  // Avgränsningen ligger i frågan, och svaret är detsamma vare sig
+  // certifikatet saknas eller ligger utanför behörigheten. Två olika fel
+  // hade gjort certifikat-id uppräkningsbara, tvärtemot resten av appen.
+  const existing = await db.certification.findFirst({
+    where: {
+      id,
+      OR: [
+        { team: teamScope(user) },
+        { dog: { teams: { some: teamScope(user) } } },
+        { user: { teams: { some: teamScope(user) } } },
+      ],
+    },
     include: { type: true },
   });
-  if (!existing) throw new Error("Certifikatet finns inte.");
+  if (!existing) throw new Error("Certifikatet ligger utanför din behörighet.");
 
   // Samma behörighetskontroll som vid registrering.
   const subject = existing.teamId
@@ -211,8 +241,7 @@ export async function renewCertification(formData: FormData) {
   }
 
   const issuedAt = new Date();
-  const expiresAt = new Date(issuedAt);
-  expiresAt.setMonth(expiresAt.getMonth() + existing.type.validityMonths);
+  const expiresAt = addMonths(issuedAt, existing.type.validityMonths);
 
   const renewed = await db.certification.create({
     data: {

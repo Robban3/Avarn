@@ -4,6 +4,7 @@ import { teamScope } from "./authz";
 import type { SessionUser } from "./session";
 import { periodStats, previousRollingFrom, rollingFrom } from "./stats";
 import { certStatus } from "./certifications";
+import { valjNotiser, type Notis } from "./notiser";
 import { daysUntil } from "./format";
 import { getSettings } from "./settings";
 
@@ -86,19 +87,18 @@ export async function importantNotices(user: SessionUser, take = 4) {
   const { certWarningDays } = await getSettings();
   limit.setDate(limit.getDate() + certWarningDays);
 
-  const teams = await db.team.findMany({
-    where: teamScope(user),
-    select: { id: true, dogId: true, handlerId: true },
-  });
+  const scope = teamScope(user);
 
   const [certifications, followUps, notifications] = await Promise.all([
     db.certification.findMany({
       where: {
         expiresAt: { lte: limit },
+        // Avgränsningen ligger i relationen: en id-lista hade hämtat hela
+        // beståndet i onödan för den som ser allt.
         OR: [
-          { teamId: { in: teams.map((t) => t.id) } },
-          { dogId: { in: teams.map((t) => t.dogId) } },
-          { userId: { in: teams.map((t) => t.handlerId) } },
+          { team: scope },
+          { dog: { teams: { some: scope } } },
+          { user: { teams: { some: scope } } },
         ],
       },
       include: { type: true },
@@ -106,7 +106,7 @@ export async function importantNotices(user: SessionUser, take = 4) {
       take,
     }),
     db.followUp.findMany({
-      where: { team: teamScope(user), status: "OPEN" },
+      where: { team: scope, status: "OPEN" },
       include: { instructor: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take,
@@ -118,26 +118,37 @@ export async function importantNotices(user: SessionUser, take = 4) {
     }),
   ]);
 
-  const notices = [
-    ...certifications.map((cert) => {
-      const days = daysUntil(cert.expiresAt);
-      return {
-        id: `cert-${cert.id}`,
-        text:
-          days < 0
-            ? `“${cert.type.name}” har gått ut`
-            : `“${cert.type.name}” går ut om ${days} ${days === 1 ? "dag" : "dagar"}`,
-        href: "/certifikat",
-        urgent: certStatus(cert.expiresAt, certWarningDays) !== "VALID",
-        at: cert.expiresAt,
-      };
-    }),
+  const nu = Date.now();
+
+  /**
+   * `ordning` är tiden kvar till åtgärd i millisekunder: negativ för något
+   * som redan passerat, noll för sådant som ligger och väntar nu. Ett
+   * utgånget certifikat hamnar alltså före en öppen uppföljning, som i sin
+   * tur går före ett certifikat som går ut om en månad.
+   */
+  const certNotiser = certifications.map((cert) => {
+    const days = daysUntil(cert.expiresAt);
+    return {
+      id: `cert-${cert.id}`,
+      text:
+        days < 0
+          ? `“${cert.type.name}” har gått ut`
+          : `“${cert.type.name}” går ut om ${days} ${days === 1 ? "dag" : "dagar"}`,
+      href: "/certifikat",
+      urgent: certStatus(cert.expiresAt, certWarningDays) !== "VALID",
+      at: cert.expiresAt,
+      ordning: cert.expiresAt.getTime() - nu,
+    };
+  });
+
+  const ovrigaNotiser = [
     ...followUps.map((f) => ({
       id: `fu-${f.id}`,
       text: `Uppföljning: ${f.title}`,
       href: "/traning",
       urgent: false,
       at: f.createdAt,
+      ordning: 0,
     })),
     ...notifications.map((n) => ({
       id: `n-${n.id}`,
@@ -145,10 +156,15 @@ export async function importantNotices(user: SessionUser, take = 4) {
       href: n.url ?? "/meddelanden",
       urgent: false,
       at: n.createdAt,
+      ordning: 0,
     })),
-  ];
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
-  return notices.slice(0, take);
+  // Varannan plats från varje håll, så att en sorts notis aldrig fyller
+  // listan. Tidigare klipptes den osorterade listan rakt av: hade föraren
+  // fyra certifikat i varningsfönstret syntes aldrig en uppföljning eller
+  // ett oläst meddelande.
+  return valjNotiser<Notis>([certNotiser, ovrigaNotiser], take);
 }
 
 /** Tidslinje över träning, uppdrag och kommentarer. */

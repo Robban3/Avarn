@@ -38,24 +38,19 @@ export async function expiringCertifications(
   withinDays?: number,
 ) {
   const dagar = withinDays ?? (await getSettings()).certWarningDays;
-  const teamIds = await visibleTeamIds(user);
+  const scope = teamScope(user);
   const limit = new Date();
   limit.setDate(limit.getDate() + dagar);
-
-  const teams = await db.team.findMany({
-    where: { id: { in: teamIds } },
-    select: { id: true, handlerId: true, dogId: true },
-  });
-  const dogIds = teams.map((t) => t.dogId);
-  const handlerIds = teams.map((t) => t.handlerId);
 
   return db.certification.findMany({
     where: {
       expiresAt: { lte: limit },
+      // Avgränsningen uttrycks i relationen i stället för genom två
+      // hämtade id-listor: samma villkor, en fråga i stället för tre.
       OR: [
-        { teamId: { in: teamIds } },
-        { dogId: { in: dogIds } },
-        { userId: { in: handlerIds } },
+        { team: scope },
+        { dog: { teams: { some: scope } } },
+        { user: { teams: { some: scope } } },
       ],
     },
     include: {

@@ -30,6 +30,14 @@ export const SERIES = [
 /** Sekventiell turkos skala för kartan, låg → hög. */
 const RAMP = ["#31615c", "#33827a", "#37a79c", "#4ac6bb", "#7ae3d9"] as const;
 
+/**
+ * Regioner utan ekipage. Neutralt grått i stället för skalans mörkaste
+ * turkos: "inga" och "några få" är olika saker och ska inte se lika ut.
+ * Tonen ligger på ΔE 15,6 från skalans mörkaste för normalseende och 14,8
+ * vid deuteranopi, alltså klart åtskilda; tabellen bredvid ger exakta tal.
+ */
+const TOM = "#2b3133";
+
 const AXIS = "#6b7476";
 const GRID = "#272d2f";
 const SURFACE = "#161a1c";
@@ -72,6 +80,29 @@ export type Slice = { label: string; value: number };
  * också med siffra och andel i teckenförklaringen – färgen är alltså
  * aldrig det enda som skiljer dem åt.
  */
+/**
+ * Heltalsprocent som summerar till exakt 100.
+ *
+ * Avrundas varje andel för sig kan summan bli 99 eller 101, och en ring
+ * som säger 101 % ser trasig ut. Här får de största resterna varsin extra
+ * procent (största restens metod).
+ */
+export function procentandelar(varden: number[]) {
+  const total = varden.reduce((s, v) => s + v, 0);
+  if (total === 0) return varden.map(() => 0);
+
+  const exakta = varden.map((v) => (v / total) * 100);
+  const golv = exakta.map(Math.floor);
+  const overskott = 100 - golv.reduce((s, v) => s + v, 0);
+  const ordning = exakta
+    .map((v, i) => ({ i, rest: v - Math.floor(v) }))
+    .sort((a, b) => b.rest - a.rest || a.i - b.i)
+    .slice(0, Math.max(0, overskott))
+    .map((x) => x.i);
+
+  return golv.map((v, i) => (ordning.includes(i) ? v + 1 : v));
+}
+
 export function Donut({
   slices,
   centerLabel,
@@ -85,6 +116,7 @@ export function Donut({
   const gap = 2; // yta mellan segmenten, i banans längdenhet
 
   const andel = (v: number) => (total === 0 ? 0 : v / total);
+  const procent = procentandelar(slices.map((s) => s.value));
   const banor = slices.map((s, i) => {
     // Startpunkten är summan av allt före segmentet – räknas fram i stället
     // för att skrivas upp i en yttre variabel, så funktionen förblir ren.
@@ -97,6 +129,7 @@ export function Donut({
       offset: fore * omkrets,
       farg: SERIES[i % SERIES.length],
       andel: andel(s.value),
+      procent: procent[i],
     };
   });
 
@@ -124,7 +157,7 @@ export function Donut({
               strokeDasharray={`${b.langd} ${omkrets - b.langd}`}
               strokeDashoffset={-b.offset}
             >
-              <title>{`${b.label}: ${b.value} (${Math.round(b.andel * 100)}%)`}</title>
+              <title>{`${b.label}: ${b.value} (${b.procent}%)`}</title>
             </circle>
           ))}
         </g>
@@ -159,9 +192,7 @@ export function Donut({
             </span>
             <span className="shrink-0 tabular-nums text-fg">
               {b.value}{" "}
-              <span className="text-fg-muted">
-                ({Math.round(b.andel * 100)}%)
-              </span>
+              <span className="text-fg-muted">({b.procent}%)</span>
             </span>
           </li>
         ))}
@@ -173,6 +204,20 @@ export function Donut({
 /* ------------------------------------------------------------ Linjediagram */
 
 export type Point = { label: string; value: number };
+
+/**
+ * Axelsteg valt ur skalan 1, 2, 5, 10, 20, 50 … efter storleksordning.
+ *
+ * Tidigare rundades steget upp till närmaste tiotal, vilket gav steget 10
+ * för allt under 41 – en serie på 3–8 timmar pressades då ihop i understa
+ * femtedelen och såg ut som en rak linje fast den varierade.
+ */
+export function axelSteg(max: number) {
+  const onskat = max / 4;
+  const storleksordning = 10 ** Math.floor(Math.log10(Math.max(onskat, 1)));
+  const kandidater = [1, 2, 5, 10].map((k) => k * storleksordning);
+  return kandidater.find((k) => k >= onskat) ?? kandidater[kandidater.length - 1];
+}
 
 /**
  * En serie över tid. Ingen teckenförklaring behövs – rubriken namnger
@@ -191,8 +236,7 @@ export function LineChart({
   const inner = { w: W - pad.left - pad.right, h: H - pad.top - pad.bottom };
 
   const max = Math.max(...points.map((p) => p.value), 1);
-  // Rund upp till en jämn nivå så att axeln får läsbara steg.
-  const steg = Math.max(1, Math.ceil(max / 4 / 10) * 10);
+  const steg = axelSteg(max);
   const topp = steg * 4;
 
   const x = (i: number) =>
@@ -353,8 +397,13 @@ export function SwedenMap({
   className?: string;
 }) {
   const max = Math.max(...regions.map((r) => r.teams), 1);
-  const steg = (n: number) =>
-    RAMP[Math.min(RAMP.length - 1, Math.round((n / max) * (RAMP.length - 1)))];
+  const steg = (n: number) => {
+    if (n === 0) return TOM;
+    // Skalan börjar vid ett ekipage, så den minsta bemannade regionen får
+    // skalans mörkaste ton och inte den tomma.
+    const andel = max <= 1 ? 1 : (n - 1) / (max - 1);
+    return RAMP[Math.min(RAMP.length - 1, Math.round(andel * (RAMP.length - 1)))];
+  };
 
   return (
     <svg

@@ -30,6 +30,41 @@ const missionSchema = z.object({
 
 export type MissionFormState = { error?: string };
 
+/** Uppdragsnumren börjar här, som i Avarns befintliga ärendeserie. */
+const REFERENS_START = 2500;
+
+/**
+ * Nästa lediga uppdragsnummer: ett steg efter det högsta som finns.
+ *
+ * Numren jämförs som tal och inte som text – "UPP-10000" sorteras före
+ * "UPP-9999" i bokstavsordning. Bara referenskolumnen hämtas.
+ */
+async function nastaReferens(steg: number) {
+  const befintliga = await db.mission.findMany({ select: { reference: true } });
+  const hogsta = befintliga.reduce((max, m) => {
+    const nummer = Number(m.reference.replace(/^UPP-/, ""));
+    return Number.isFinite(nummer) && nummer > max ? nummer : max;
+  }, REFERENS_START - 1);
+  return `UPP-${hogsta + 1 + steg}`;
+}
+
+/**
+ * Skapar med ett löpnummer och gör om vid krock. Två samtidiga skapanden
+ * kan få samma nummer; referensen är unik i databasen, så den ena får ett
+ * nytt försök i stället för ett femhundrafel.
+ */
+async function skapaMedReferens<T>(skapa: (reference: string) => Promise<T>) {
+  for (let forsok = 0; forsok < 5; forsok += 1) {
+    try {
+      return await skapa(await nastaReferens(forsok));
+    } catch (error) {
+      const kod = (error as { code?: string }).code;
+      if (kod !== "P2002") throw error;
+    }
+  }
+  throw new Error("Kunde inte tilldela ett uppdragsnummer. Försök igen.");
+}
+
 export async function createMission(
   _prev: MissionFormState,
   formData: FormData,
@@ -66,36 +101,40 @@ export async function createMission(
     endAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
   }
 
-  // Löpnummer som är läsbart i fält och i rapporter.
-  const count = await db.mission.count();
-  const reference = `UPP-${2500 + count}`;
-
-  const mission = await db.mission.create({
-    data: {
-      reference,
-      title: data.title,
-      missionType: data.missionType,
-      customerId: data.customerId || null,
-      contactName: data.contactName || null,
-      contactPhone: data.contactPhone || null,
-      startAt,
-      endAt,
-      address: data.address || null,
-      locality: data.locality,
-      regionId: data.regionId,
-      disciplineId: data.disciplineId || null,
-      specialInstructions: data.specialInstructions || null,
-      status: "PLANNED",
-      createdById: user.id,
-    },
-  });
+  // Löpnummer som är läsbart i fält och i rapporter. Numret räknades
+  // tidigare fram ur antalet uppdrag, vilket gav samma referens åt två
+  // samtidiga skapanden och återanvände ett upptaget nummer efter en
+  // radering – referensen är unik i databasen, så det slutade i ett
+  // ohanterat fel. Nu tas nästa nummer efter det högsta som finns, och
+  // krockar vi ändå görs ett nytt försök.
+  const mission = await skapaMedReferens((reference) =>
+    db.mission.create({
+      data: {
+        reference,
+        title: data.title,
+        missionType: data.missionType,
+        customerId: data.customerId || null,
+        contactName: data.contactName || null,
+        contactPhone: data.contactPhone || null,
+        startAt,
+        endAt,
+        address: data.address || null,
+        locality: data.locality,
+        regionId: data.regionId,
+        disciplineId: data.disciplineId || null,
+        specialInstructions: data.specialInstructions || null,
+        status: "PLANNED",
+        createdById: user.id,
+      },
+    }),
+  );
 
   await audit({
     userId: user.id,
     action: "CREATE",
     entityType: "Mission",
     entityId: mission.id,
-    detail: reference,
+    detail: mission.reference,
   });
 
   revalidatePath("/uppdrag");
@@ -120,6 +159,9 @@ export async function assignTeam(formData: FormData) {
 
   if (!mission) throw new Error("Uppdraget ligger utanför din behörighet.");
   if (!team) throw new Error("Ekipaget ligger utanför din behörighet.");
+  if (["COMPLETED", "CANCELLED"].includes(mission.status)) {
+    throw new Error("Uppdraget är avslutat och kan inte tilldelas.");
+  }
 
   await db.missionAssignment.upsert({
     where: { missionId_teamId: { missionId: mission.id, teamId: team.id } },
@@ -132,10 +174,14 @@ export async function assignTeam(formData: FormData) {
     update: { status: "OFFERED", respondedAt: null, assignedById: user.id },
   });
 
-  await db.mission.update({
-    where: { id: mission.id },
-    data: { status: "ASSIGNED" },
-  });
+  // Bara framåt: ett pågående uppdrag ska inte falla tillbaka till
+  // "Tilldelat" för att ytterligare ett ekipage kallas in.
+  if (mission.status === "PLANNED") {
+    await db.mission.update({
+      where: { id: mission.id },
+      data: { status: "ASSIGNED" },
+    });
+  }
 
   await audit({
     userId: user.id,
@@ -171,6 +217,14 @@ export async function respondToAssignment(formData: FormData) {
     include: { mission: true, team: { include: { dog: true } } },
   });
   if (!assignment) throw new Error("Tilldelningen ligger utanför din behörighet.");
+  // Ett svar hör till en tilldelning som fortfarande är öppen. Ett avslutat
+  // eller inställt uppdrag går inte att tacka nej till i efterhand.
+  if (assignment.status === "COMPLETED") {
+    throw new Error("Uppdraget är redan avslutat.");
+  }
+  if (["COMPLETED", "CANCELLED"].includes(assignment.mission.status)) {
+    throw new Error("Uppdraget är avslutat och går inte längre att svara på.");
+  }
 
   await db.missionAssignment.update({
     where: { id: assignment.id },

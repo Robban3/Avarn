@@ -80,7 +80,12 @@ function projicera([lon, lat]) {
   ];
 }
 
-/** Douglas–Peucker: behåll de punkter som faktiskt ändrar formen. */
+/**
+ * Douglas–Peucker: behåll de punkter som faktiskt ändrar formen.
+ *
+ * Iterativ med en egen stack. Rekursionen gick ett steg per behållen punkt
+ * och en kustlinje med tiotusentals punkter kan slå i anropsstacken.
+ */
 function forenkla(punkter, eps) {
   if (punkter.length < 3) return punkter;
 
@@ -95,21 +100,31 @@ function forenkla(punkter, eps) {
     return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
   };
 
-  let storst = 0;
-  let index = 0;
-  for (let i = 1; i < punkter.length - 1; i += 1) {
-    const d = avstand(punkter[i], punkter[0], punkter.at(-1));
-    if (d > storst) {
-      storst = d;
-      index = i;
+  // Markera vilka punkter som ska behållas i stället för att bygga upp
+  // delresultat: samma algoritm, men utan djup i anropsstacken.
+  const behall = new Array(punkter.length).fill(false);
+  behall[0] = true;
+  behall[punkter.length - 1] = true;
+
+  const stack = [[0, punkter.length - 1]];
+  while (stack.length > 0) {
+    const [start, slut] = stack.pop();
+    let storst = 0;
+    let index = -1;
+    for (let i = start + 1; i < slut; i += 1) {
+      const d = avstand(punkter[i], punkter[start], punkter[slut]);
+      if (d > storst) {
+        storst = d;
+        index = i;
+      }
+    }
+    if (index !== -1 && storst > eps) {
+      behall[index] = true;
+      stack.push([start, index], [index, slut]);
     }
   }
 
-  if (storst <= eps) return [punkter[0], punkter.at(-1)];
-  return [
-    ...forenkla(punkter.slice(0, index + 1), eps).slice(0, -1),
-    ...forenkla(punkter.slice(index), eps),
-  ];
+  return punkter.filter((_, i) => behall[i]);
 }
 
 const lanTillRegion = new Map();
@@ -117,6 +132,9 @@ for (const [kod, lan] of Object.entries(REGION_LAN)) {
   for (const namn of lan) lanTillRegion.set(namn, kod);
 }
 
+// Kontrollen går åt båda hållen. Bara den ena vägen räckte inte: ett
+// stavfel i REGION_LAN gjorde att inget län träffade regionen, som då
+// tyst blev tom – och SwedenMap ritar ingenting utan att säga till.
 const okanda = geo.features
   .map((f) => f.properties.name)
   .filter((n) => !lanTillRegion.has(n));
@@ -124,6 +142,24 @@ if (okanda.length > 0) {
   throw new Error(
     `Län saknar region i REGION_LAN: ${okanda.join(", ")}. ` +
       "Lägg till dem i src/lib/domain.ts och kör om.",
+  );
+}
+
+const lanIGeodata = new Set(geo.features.map((f) => f.properties.name));
+const stavfel = [...lanTillRegion.keys()].filter((n) => !lanIGeodata.has(n));
+if (stavfel.length > 0) {
+  throw new Error(
+    `REGION_LAN nämner län som inte finns i geodatan: ${stavfel.join(", ")}. ` +
+      "Rätta stavningen i src/lib/domain.ts och kör om.",
+  );
+}
+
+const tommaRegioner = Object.keys(REGION_LAN).filter(
+  (kod) => (REGION_LAN[kod] ?? []).length === 0,
+);
+if (tommaRegioner.length > 0) {
+  throw new Error(
+    `Regioner utan län i REGION_LAN: ${tommaRegioner.join(", ")}.`,
   );
 }
 

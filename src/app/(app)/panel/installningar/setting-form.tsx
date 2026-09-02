@@ -78,11 +78,20 @@ export function SettingForm({
       </div>
       <p className="mb-3 text-[12px] text-fg-muted">{beskrivning}</p>
 
+      {/*
+        key följer värdet: defaultValue läses bara när fältet monteras, så
+        efter "Återställ till standard" stod de borttagna raderna kvar i
+        rutan – och trycktes Spara skrevs de tillbaka. Ett nytt värde ger
+        nu ett nytt fält. Nyckeln sitter på fältet och inte på formuläret,
+        så att en inskickning aldrig kan tappas för att formuläret byts ut
+        under fötterna på den.
+      */}
       <form action={action} className="flex flex-wrap items-end gap-2.5">
         <input type="hidden" name="nyckel" value={nyckel} />
         {typ === "tal" ? (
           <label className="flex items-center gap-2">
             <input
+              key={String(varde)}
               name="varde"
               type="number"
               min={1}
@@ -95,6 +104,7 @@ export function SettingForm({
           </label>
         ) : (
           <textarea
+            key={(varde as string[]).join("\n")}
             name="varde"
             rows={Math.min(Math.max((varde as string[]).length, 3), 10)}
             defaultValue={(varde as string[]).join("\n")}

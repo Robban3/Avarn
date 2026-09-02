@@ -24,15 +24,20 @@ export function periodFran(key: PeriodKey) {
   return from;
 }
 
-/** Aktiva hundar inom behörigheten, denna månad och förra. */
+/**
+ * Aktiva hundar inom behörigheten.
+ *
+ * Distinkta hundar, inte ekipagerader: samma hund kan ingå i två ekipage
+ * och räknades då två gånger. Statusen filtreras i frågan, inte i minnet.
+ */
 export async function dogCount(user: SessionUser) {
   const teams = await db.team.findMany({
-    where: { ...teamScope(user), status: "ACTIVE" },
-    select: { dogId: true, dog: { select: { status: true, createdAt: true } } },
+    where: {
+      AND: [teamScope(user), { status: "ACTIVE", dog: { status: "ACTIVE" } }],
+    },
+    select: { dogId: true },
   });
-  const aktiva = teams.filter((t) => t.dog.status === "ACTIVE");
-  const forra = aktiva.filter((t) => t.dog.createdAt < rollingFrom()).length;
-  return { count: aktiva.length, change: aktiva.length - forra };
+  return { count: new Set(teams.map((t) => t.dogId)).size };
 }
 
 /**
@@ -41,16 +46,16 @@ export async function dogCount(user: SessionUser) {
  */
 export async function missionsByDiscipline(user: SessionUser, from: Date) {
   const scope = teamScope(user);
-  const teamIds = (
-    await db.team.findMany({ where: scope, select: { id: true } })
-  ).map((t) => t.id);
 
+  // Samma avgränsning som nyckeltalet i periodStats – ringen och siffran
+  // ovanför den ska räkna samma uppdrag. Relationsfilter i stället för en
+  // hämtad id-lista: för administratör var listan hela beståndet.
   const missions = await db.mission.findMany({
     where: seesAllRegions(user)
       ? { startAt: { gte: from } }
       : {
           startAt: { gte: from },
-          assignments: { some: { teamId: { in: teamIds } } },
+          assignments: { some: { team: scope, status: { not: "DECLINED" } } },
         },
     include: { discipline: true },
   });
@@ -74,14 +79,11 @@ export async function missionsByDiscipline(user: SessionUser, from: Date) {
 /** Senaste uppdragen med tilldelat ekipage – tabellen i översikten. */
 export async function latestMissions(user: SessionUser, take = 5) {
   const scope = teamScope(user);
-  const teamIds = (
-    await db.team.findMany({ where: scope, select: { id: true } })
-  ).map((t) => t.id);
 
   return db.mission.findMany({
     where: seesAllRegions(user)
       ? {}
-      : { assignments: { some: { teamId: { in: teamIds } } } },
+      : { assignments: { some: { team: scope } } },
     include: {
       assignments: { include: { team: { include: { dog: true, handler: true } } } },
       region: true,
@@ -156,7 +158,9 @@ export async function teamRows(
 /** Träningstimmar per ekipage i perioden – underlag för uppföljning. */
 export async function trainingByTeam(user: SessionUser, from: Date) {
   const teams = await db.team.findMany({
-    where: teamScope(user),
+    // Bara aktiva ekipage: ett avslutat ekipage tränar aldrig mer och
+    // flaggades annars för evigt med "Inga pass".
+    where: { AND: [teamScope(user), { status: "ACTIVE" }] },
     include: {
       dog: true,
       handler: true,
@@ -258,13 +262,20 @@ export async function certificationOverview(user: SessionUser) {
     )
     .sort((a, b) => a.cert.expiresAt.getTime() - b.cert.expiresAt.getTime());
 
-  /** Har hunden ett giltigt certifikat av den här typen? */
-  const giltigt = (dogId: string, kod: string) =>
+  /**
+   * Finns utbildningen? Ett disciplincertifikat kan vara registrerat på
+   * hunden eller på ekipaget – letade vi bara bland hundens certifikat
+   * listades en genomförd utbildning felaktigt som saknad.
+   */
+  const giltigt = (team: (typeof teams)[number], kod: string) =>
     dogCerts.some(
       (c) =>
-        c.dogId === dogId &&
+        c.dogId === team.dogId &&
         c.type.code === kod &&
         c.expiresAt.getTime() >= nu,
+    ) ||
+    team.certifications.some(
+      (c) => c.type.code === kod && c.expiresAt.getTime() >= nu,
     );
 
   const saknade = teams.flatMap((t) =>
@@ -273,7 +284,7 @@ export async function certificationOverview(user: SessionUser) {
         kod: DISCIPLINE_CERT[d.discipline.code],
         inriktning: d.discipline.name,
       }))
-      .filter((x) => x.kod && !giltigt(t.dogId, x.kod))
+      .filter((x) => x.kod && !giltigt(t, x.kod))
       .map((x) => ({ team: t, inriktning: x.inriktning, certKod: x.kod })),
   );
 

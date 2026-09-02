@@ -41,7 +41,15 @@ export async function createPlan(
 
   const start = new Date(data.periodStart);
   const end = new Date(data.periodEnd);
-  if (end < start) return { error: "Slutdatum måste vara efter startdatum." };
+  // Ett datum som inte går att tolka blir Invalid Date och slutar annars i
+  // ett databasfel i stället för ett svar föraren kan göra något åt.
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { error: "Ogiltigt datum." };
+  }
+  // En plan får omfatta ett enda dygn, men inte sluta innan den börjat.
+  if (end < start) {
+    return { error: "Slutdatum kan inte vara före startdatum." };
+  }
 
   const plan = await db.trainingPlan.create({
     data: {

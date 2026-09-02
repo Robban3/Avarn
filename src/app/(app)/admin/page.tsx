@@ -16,8 +16,19 @@ export default async function AdminPage() {
   const unread = await unreadNotificationCount(admin.id);
 
   const [users, regions, certTypes, disciplines, auditLog] = await Promise.all([
+    // select, inte include: med include följer passwordHash med ut i
+    // serverkomponenten och är sedan en prop från att lämna servern.
     db.user.findMany({
-      include: { region: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        lastLoginAt: true,
+        regionId: true,
+        region: true,
+      },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     }),
     db.region.findMany({

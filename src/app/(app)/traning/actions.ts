@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit";
 import { instructorsForTeam, notify, notifyMany } from "@/lib/notify";
 import { isAllowedType, storeUpload } from "@/lib/media";
 import { fromLocalInput } from "@/lib/format";
+import type { SessionUser } from "@/lib/session";
 
 /**
  * Server actions för träningsdagboken. Varje action börjar med att
@@ -72,6 +73,31 @@ function nextDay(date: string) {
 }
 
 /**
+ * Får passet kopplas till den här planerade övningen?
+ *
+ * Kopplingen är unik i databasen: en övning rapporteras en gång. Utan
+ * kontrollen här kastar Prisma ett ohanterat unikhetsfel och föraren får
+ * en femhundrasida i stället för ett svar som går att göra något åt.
+ *
+ * Returnerar felmeddelandet, eller null när kopplingen går bra.
+ */
+async function ovningsFel(
+  user: SessionUser,
+  ovningId: string,
+  sessionId?: string,
+) {
+  const ovning = await db.plannedExercise.findFirst({
+    where: { id: ovningId, plan: { team: teamScope(user) } },
+    select: { id: true, session: { select: { id: true } } },
+  });
+  if (!ovning) return "Övningen ligger utanför din behörighet.";
+  if (ovning.session && ovning.session.id !== sessionId) {
+    return "Övningen är redan rapporterad i ett annat pass.";
+  }
+  return null;
+}
+
+/**
  * Uppdaterar ett befintligt pass. Föraren äger sitt pass fram till
  * godkännande; därefter är det låst och rättelser sker genom en kommentar.
  */
@@ -122,6 +148,11 @@ export async function updateSession(
     return { error: (error as Error).message };
   }
 
+  if (data.plannedExerciseId) {
+    const fel = await ovningsFel(user, data.plannedExerciseId, existing.id);
+    if (fel) return { error: fel };
+  }
+
   const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
 
   await db.trainingSession.update({
@@ -139,11 +170,21 @@ export async function updateSession(
       foundCount: data.foundCount,
       comment: data.comment || null,
       status,
+      // Kopplingen till den planerade övningen skrevs tidigare bara vid
+      // skapandet och tappades tyst vid varje rättelse.
+      plannedExerciseId: data.plannedExerciseId || null,
       // En rättelse efter begärd komplettering ska granskas på nytt.
       approvedById: null,
       approvedAt: null,
     },
   });
+
+  if (data.plannedExerciseId) {
+    await db.plannedExercise.updateMany({
+      where: { id: data.plannedExerciseId, plan: { team: teamScope(user) } },
+      data: { status: "COMPLETED" },
+    });
+  }
 
   // Gömmorna speglar antalen och skrivs om när de ändrats.
   await db.hide.deleteMany({ where: { sessionId: existing.id } });
@@ -258,6 +299,11 @@ export async function createSession(
     endAt = endOfSession(startAt, data.date, data.endTime);
   } catch (error) {
     return { error: (error as Error).message };
+  }
+
+  if (data.plannedExerciseId) {
+    const fel = await ovningsFel(user, data.plannedExerciseId);
+    if (fel) return { error: fel };
   }
 
   const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";

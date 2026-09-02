@@ -8,6 +8,8 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/session";
  */
 const PUBLIC_PATHS = [
   "/login",
+  // Tömmer kakan; måste nås även med en session som fortfarande är giltig.
+  "/logga-ut",
   "/manifest.webmanifest",
   "/ikon.svg",
   "/ikon-maskable.svg",

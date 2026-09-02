@@ -69,13 +69,90 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  let created = 0;
+  if (certifications.length === 0) {
+    return Response.json({ granskade: 0, skapade: 0 });
+  }
+
+  // Allt som behövs för mottagarlistorna hämtas i klump före loopen. Per
+  // certifikat blev det annars tre frågor plus en per mottagare – med
+  // femhundra certifikat tusentals rundturer i rad.
+  const dogIds = [...new Set(certifications.flatMap((c) => c.dogId ?? []))];
+  const teamIds = [...new Set(certifications.flatMap((c) => c.teamId ?? []))];
+  const regionIds = [
+    ...new Set(certifications.flatMap((c) => c.team?.regionId ?? [])),
+  ];
+
+  const [teamsPerDog, instruktorer, chefer] = await Promise.all([
+    dogIds.length
+      ? db.team.findMany({
+          where: { dogId: { in: dogIds } },
+          select: { dogId: true, handlerId: true },
+        })
+      : [],
+    teamIds.length
+      ? db.instructorAssignment.findMany({
+          where: { teamId: { in: teamIds } },
+          select: { teamId: true, instructorId: true },
+        })
+      : [],
+    regionIds.length
+      ? db.user.findMany({
+          where: {
+            role: "REGIONAL_MANAGER",
+            regionId: { in: regionIds },
+            active: true,
+          },
+          select: { id: true, regionId: true },
+        })
+      : [],
+  ]);
+
+  const forarePerHund = new Map<string, string[]>();
+  for (const t of teamsPerDog) {
+    forarePerHund.set(t.dogId, [
+      ...(forarePerHund.get(t.dogId) ?? []),
+      t.handlerId,
+    ]);
+  }
+  const instruktorerPerEkipage = new Map<string, string[]>();
+  for (const i of instruktorer) {
+    instruktorerPerEkipage.set(i.teamId, [
+      ...(instruktorerPerEkipage.get(i.teamId) ?? []),
+      i.instructorId,
+    ]);
+  }
+  const cheferPerRegion = new Map<string, string[]>();
+  for (const m of chefer) {
+    if (!m.regionId) continue;
+    cheferPerRegion.set(m.regionId, [
+      ...(cheferPerRegion.get(m.regionId) ?? []),
+      m.id,
+    ]);
+  }
+
+  /**
+   * Adressen bär identiteten: certifikatets id och den tröskel varningen
+   * gäller. Avdubbleringen skedde tidigare på rubrik och text, men texten
+   * innehåller antal dagar kvar och ändras alltså varje dygn – ett
+   * certifikat med fyrtiofem dagar kvar gav fyrtiofem notiser i stället
+   * för två, och ett utgånget gav en ny varje dygn i evighet.
+   */
+  const url = (certId: string, threshold: number) =>
+    `/certifikat#cert-${certId}-${threshold}`;
+
+  type Paminnelse = {
+    userId: string;
+    url: string;
+    title: string;
+    body: string;
+  };
+  const planerade: Paminnelse[] = [];
 
   for (const cert of certifications) {
     const days = daysUntil(cert.expiresAt);
     // Närmaste passerade tröskel, så att varje nivå ger en varning.
     const threshold = THRESHOLDS.filter((t) => days <= t).sort((a, b) => a - b)[0];
-    if (threshold === undefined && days >= 0) continue;
+    if (threshold === undefined) continue;
 
     const subject =
       cert.team?.dog.name ?? cert.dog?.name ?? cert.user?.name ?? "ekipaget";
@@ -85,29 +162,15 @@ export async function POST(request: NextRequest) {
     if (cert.userId) recipients.add(cert.userId);
     if (cert.team) recipients.add(cert.team.handlerId);
     if (cert.dogId) {
-      const teams = await db.team.findMany({
-        where: { dogId: cert.dogId },
-        select: { handlerId: true, regionId: true },
-      });
-      teams.forEach((t) => recipients.add(t.handlerId));
+      for (const id of forarePerHund.get(cert.dogId) ?? []) recipients.add(id);
     }
-
-    const teamId = cert.teamId ?? null;
-    if (teamId) {
-      const instructors = await db.instructorAssignment.findMany({
-        where: { teamId },
-        select: { instructorId: true },
-      });
-      instructors.forEach((i) => recipients.add(i.instructorId));
+    if (cert.teamId) {
+      for (const id of instruktorerPerEkipage.get(cert.teamId) ?? [])
+        recipients.add(id);
     }
-
-    const regionId = cert.team?.regionId;
-    if (regionId) {
-      const managers = await db.user.findMany({
-        where: { role: "REGIONAL_MANAGER", regionId, active: true },
-        select: { id: true },
-      });
-      managers.forEach((m) => recipients.add(m.id));
+    if (cert.team?.regionId) {
+      for (const id of cheferPerRegion.get(cert.team.regionId) ?? [])
+        recipients.add(id);
     }
 
     const title =
@@ -120,26 +183,35 @@ export async function POST(request: NextRequest) {
         : `${subject} – ${days} ${days === 1 ? "dag" : "dagar"} kvar.`;
 
     for (const userId of recipients) {
-      // Har mottagaren redan varnats för samma certifikat och nivå?
-      const existing = await db.notification.findFirst({
-        where: {
-          userId,
-          type: "CERT_EXPIRING",
-          title,
-          body,
-        },
-      });
-      if (existing) continue;
-
-      await notify({
-        userId,
-        type: "CERT_EXPIRING",
-        title,
-        body,
-        url: "/certifikat",
-      });
-      created += 1;
+      planerade.push({ userId, url: url(cert.id, threshold), title, body });
     }
+  }
+
+  const redanSkickade = new Set(
+    (
+      await db.notification.findMany({
+        where: {
+          type: "CERT_EXPIRING",
+          url: { in: [...new Set(planerade.map((p) => p.url))] },
+        },
+        select: { userId: true, url: true },
+      })
+    ).map((n) => `${n.userId}|${n.url}`),
+  );
+
+  let created = 0;
+  for (const p of planerade) {
+    const nyckel = `${p.userId}|${p.url}`;
+    if (redanSkickade.has(nyckel)) continue;
+    redanSkickade.add(nyckel);
+    await notify({
+      userId: p.userId,
+      type: "CERT_EXPIRING",
+      title: p.title,
+      body: p.body,
+      url: p.url,
+    });
+    created += 1;
   }
 
   return Response.json({

@@ -41,15 +41,19 @@ export async function canAccessMedia(user: SessionUser, mediaId: string) {
 
   if (asset.certificationId && asset.certification) {
     const cert = asset.certification;
+    const villkor = [
+      cert.teamId ? { id: cert.teamId } : null,
+      cert.dogId ? { dogId: cert.dogId } : null,
+      cert.userId ? { handlerId: cert.userId } : null,
+    ].filter((c) => c !== null);
+
+    // Ett certifikat utan mottagare hör inte till något ekipage. Neka
+    // uttryckligen i stället för att skicka ett tomt OR till Prisma och
+    // förlita sig på att det råkar bli ett nej.
+    if (villkor.length === 0) return null;
+
     const ok = await db.team.findFirst({
-      where: {
-        ...scope,
-        OR: [
-          cert.teamId ? { id: cert.teamId } : {},
-          cert.dogId ? { dogId: cert.dogId } : {},
-          cert.userId ? { handlerId: cert.userId } : {},
-        ].filter((c) => Object.keys(c).length > 0),
-      },
+      where: { AND: [scope, { OR: villkor }] },
       select: { id: true },
     });
     return ok ? asset : null;
