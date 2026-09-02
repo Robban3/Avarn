@@ -63,6 +63,29 @@ for (const name of names) {
     "utf8",
   ).trim();
 
+  /**
+   * Supabase publicerar public-schemat genom PostgREST med en publik
+   * anon-nyckel. En ny tabell utan radskydd blir därför läsbar utifrån.
+   * Helfilen supabase-setup.sql får skyddet med sig eftersom den dumpas
+   * ur en databas där det redan är påslaget – migreringsfilerna måste
+   * lägga till det själva, annars glider en ny tabell igenom.
+   */
+  const nyaTabeller = [
+    ...sql.matchAll(/CREATE TABLE\s+"([^"]+)"/gi),
+  ].map((m) => m[1]);
+
+  const rls = nyaTabeller.length
+    ? "\n" +
+      nyaTabeller
+        .map(
+          (t) =>
+            `    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.\n` +
+            `    ALTER TABLE public."${t}" ENABLE ROW LEVEL SECURITY;`,
+        )
+        .join("\n") +
+      "\n"
+    : "";
+
   // Satserna får dubbel indentering inuti DO-blocket, för läsbarhet.
   const body = sql
     .split("\n")
@@ -92,7 +115,7 @@ BEGIN
   ELSE
 
 ${body}
-
+${rls}
     INSERT INTO public._prisma_migrations (
       id, checksum, finished_at, migration_name,
       logs, rolled_back_at, started_at, applied_steps_count

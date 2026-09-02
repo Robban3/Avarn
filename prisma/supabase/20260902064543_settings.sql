@@ -33,6 +33,9 @@ BEGIN
     -- AddForeignKey
     ALTER TABLE "Setting" ADD CONSTRAINT "Setting_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Setting" ENABLE ROW LEVEL SECURITY;
+
     INSERT INTO public._prisma_migrations (
       id, checksum, finished_at, migration_name,
       logs, rolled_back_at, started_at, applied_steps_count

@@ -670,6 +670,59 @@ BEGIN
     -- AddForeignKey
     ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Region" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."User" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."HandlerProfile" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Dog" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."SearchDiscipline" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."DogDiscipline" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."DogEducation" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Team" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."InstructorAssignment" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."TeamAvailability" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."CertificationType" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Certification" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."TrainingPlan" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."PlannedExercise" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."TrainingSession" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Hide" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Customer" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Mission" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."MissionAssignment" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."OperationalReport" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Indication" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."MediaAsset" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Comment" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."FollowUp" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."Notification" ENABLE ROW LEVEL SECURITY;
+    -- Radskydd utan policy: bara ägarrollen kommer åt tabellen.
+    ALTER TABLE public."AuditLog" ENABLE ROW LEVEL SECURITY;
+
     INSERT INTO public._prisma_migrations (
       id, checksum, finished_at, migration_name,
       logs, rolled_back_at, started_at, applied_steps_count
