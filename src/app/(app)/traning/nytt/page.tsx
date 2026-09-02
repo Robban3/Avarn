@@ -24,8 +24,11 @@ function defaultDateTime() {
   }).formatToParts(new Date());
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
   const date = `${get("year")}-${get("month")}-${get("day")}`;
+  // Ett pass som slutar nu och började timmen innan. Vid midnatt rullar
+  // starttimmen runt till 23 i stället för att klampa till 00 – annars blir
+  // start och slut lika, och ett lika långt pass tolkas som ett dygn.
   const hour = Number(get("hour"));
-  const startHour = String(Math.max(0, hour - 1)).padStart(2, "0");
+  const startHour = String((hour + 23) % 24).padStart(2, "0");
   return {
     date,
     startTime: `${startHour}:00`,

@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit";
 import { teamRows } from "@/lib/panel";
 import { dateKey } from "@/lib/format";
 import { certStatus } from "@/lib/certifications";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Exporterar den vy man står i som CSV. Uttaget går genom samma
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ fel: "Okänd vy" }, { status: 400 });
   }
 
+  const { certWarningDays } = await getSettings();
   const rader = await teamRows(
     user,
     {
@@ -57,7 +59,9 @@ export async function GET(request: Request) {
       team.region.name,
       team.status === "ACTIVE" ? "Aktiv" : "Pausad",
       senast ? dateKey(senast) : "",
-      team.certifications.filter((c) => certStatus(c.expiresAt) !== "VALID")
+      team.certifications.filter(
+        (c) => certStatus(c.expiresAt, certWarningDays) !== "VALID",
+      )
         .length,
     ]
       .map(csv)

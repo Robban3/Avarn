@@ -45,6 +45,7 @@ import {
   trainingHoursByMonth,
 } from "@/lib/stats";
 import { recentActivity } from "@/lib/dashboard";
+import { getSettings } from "@/lib/settings";
 import {
   change,
   dogCount,
@@ -98,6 +99,7 @@ export default async function PanelPage({
     ekipage,
     regioner,
     inriktningar,
+    installningar,
   ] = await Promise.all([
     periodStats(user, rollingFrom()),
     periodStats(user, previousRollingFrom(), rollingFrom()),
@@ -112,6 +114,7 @@ export default async function PanelPage({
     teamRows(user, { regionId, disciplineId, q }, 6),
     db.region.findMany({ orderBy: { sortOrder: "asc" } }),
     db.searchDiscipline.findMany({ orderBy: { sortOrder: "asc" } }),
+    getSettings(),
   ]);
 
   const kpis = [
@@ -482,7 +485,7 @@ export default async function PanelPage({
                         team.certifications.map((c) => (
                           <CertificateIcon
                             key={c.id}
-                            className={`h-4 w-4 ${CERT_ICON_CLASSES[certStatus(c.expiresAt)]}`}
+                            className={`h-4 w-4 ${CERT_ICON_CLASSES[certStatus(c.expiresAt, installningar.certWarningDays)]}`}
                           />
                         ))
                       )}

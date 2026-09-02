@@ -101,20 +101,34 @@ export async function teamRows(
   take = 50,
 ) {
   const teams = await db.team.findMany({
+    // AND, aldrig spread: teamScope och regionfiltret sätter båda regionId,
+    // och vid spread vinner den sista nyckeln – då försvinner avgränsningen
+    // spårlöst i stället för att skärpas. Filtret får smalna av, aldrig
+    // öppna upp.
     where: {
-      ...teamScope(user),
-      ...(filter.regionId ? { regionId: filter.regionId } : {}),
-      ...(filter.disciplineId
-        ? { dog: { disciplines: { some: { disciplineId: filter.disciplineId } } } }
-        : {}),
-      ...(filter.q
-        ? {
-            OR: [
-              { dog: { name: { contains: filter.q, mode: "insensitive" } } },
-              { handler: { name: { contains: filter.q, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
+      AND: [
+        teamScope(user),
+        filter.regionId ? { regionId: filter.regionId } : {},
+        filter.disciplineId
+          ? {
+              dog: {
+                disciplines: { some: { disciplineId: filter.disciplineId } },
+              },
+            }
+          : {},
+        filter.q
+          ? {
+              OR: [
+                { dog: { name: { contains: filter.q, mode: "insensitive" } } },
+                {
+                  handler: {
+                    name: { contains: filter.q, mode: "insensitive" },
+                  },
+                },
+              ],
+            }
+          : {},
+      ],
     },
     include: {
       handler: true,

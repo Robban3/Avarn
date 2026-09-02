@@ -132,3 +132,39 @@ test("cron-jobbet kräver rätt nyckel", async ({ page }) => {
   });
   expect(fel.status()).toBe(401);
 });
+
+test("regionchef kan inte vidga sin vy med regionfiltret", async ({ page }) => {
+  // Filtret får smalna av, aldrig öppna upp. Skickar man en annan regions
+  // id i frågesträngen ska svaret bli detsamma som utan filtret.
+  await loggaIn(page, KONTON.regional);
+
+  await page.goto("/panel/ekipage");
+  await page.waitForLoadState("networkidle");
+  const regionIds = await page
+    .locator('select[aria-label="Region"] option')
+    .evaluateAll((el) =>
+      el.map((e) => (e as HTMLOptionElement).value).filter(Boolean),
+    );
+  expect(regionIds.length, "provet behöver regioner att prova").toBeGreaterThan(
+    1,
+  );
+
+  for (const id of regionIds) {
+    const svar = await page.request.get(
+      `/panel/export?vy=ekipage&region=${id}`,
+    );
+    expect(svar.status()).toBe(200);
+    const csv = await svar.text();
+    // Balder och Iris ligger utanför Region Öst i seed-datan.
+    expect(csv, `region=${id} läckte ut ekipage`).not.toContain("Balder");
+    expect(csv, `region=${id} läckte ut ekipage`).not.toContain("Iris");
+  }
+
+  for (const id of regionIds) {
+    await page.goto(`/panel/ekipage?region=${id}`);
+    const kropp = await page.locator("body").innerText();
+    expect(kropp, `region=${id} visade främmande ekipage`).not.toContain(
+      "Balder",
+    );
+  }
+});

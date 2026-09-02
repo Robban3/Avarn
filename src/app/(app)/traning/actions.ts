@@ -59,6 +59,8 @@ function endOfSession(startAt: Date, date: string, time?: string) {
   if (!time) return null;
   const endAt = combineDateTime(date, time);
   if (endAt > startAt) return endAt;
+  // Exakt samma klockslag är ett misstag, inte ett dygnslångt pass.
+  if (endAt.getTime() === startAt.getTime()) return null;
   return combineDateTime(nextDay(date), time);
 }
 
@@ -291,8 +293,13 @@ export async function createSession(
   });
 
   if (data.plannedExerciseId) {
-    await db.plannedExercise.update({
-      where: { id: data.plannedExerciseId },
+    // updateMany med avgränsningen i frågan: ett främmande övnings-id
+    // träffar noll rader i stället för att ändra någon annans plan.
+    await db.plannedExercise.updateMany({
+      where: {
+        id: data.plannedExerciseId,
+        plan: { team: teamScope(user) },
+      },
       data: { status: "COMPLETED" },
     });
   }
@@ -330,6 +337,17 @@ export async function approveSession(formData: FormData) {
     include: { team: true },
   });
   if (!session) throw new Error("Passet ligger utanför din behörighet.");
+  // Bara ett inskickat pass kan godkännas. Utan den här spärren kunde ett
+  // utkast godkännas via ett formulärinlägg, och då är föraren utelåst –
+  // det finns ingen väg tillbaka från godkänt.
+  if (session.status !== "SUBMITTED") {
+    throw new Error("Passet är inte inskickat för granskning.");
+  }
+  // Den som rapporterat granskar inte sitt eget pass. Instruktören har
+  // både session:create och session:approve, så rollen räcker inte.
+  if (session.createdById === user.id) {
+    throw new Error("Du kan inte godkänna ditt eget pass.");
+  }
 
   await db.trainingSession.update({
     where: { id: session.id },

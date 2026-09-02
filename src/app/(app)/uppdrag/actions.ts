@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan, regionScope, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
+import { fromLocalInput } from "@/lib/format";
 import { notify } from "@/lib/notify";
 
 /** Server actions för uppdrag: skapa, tilldela och svara. */
@@ -48,13 +49,21 @@ export async function createMission(
     return { error: "Du kan bara lägga upp uppdrag i din egen region." };
   }
 
-  const startAt = new Date(`${data.date}T${data.startTime}`);
-  if (Number.isNaN(startAt.getTime())) {
+  // Klockslagen läses som svensk tid, precis som formuläret visade dem –
+  // annars flyttar sig uppdraget en till två timmar varje gång det sparas.
+  let startAt: Date;
+  let endAt: Date | null = null;
+  try {
+    startAt = fromLocalInput(`${data.date}T${data.startTime}`);
+    endAt = data.endTime
+      ? fromLocalInput(`${data.date}T${data.endTime}`)
+      : null;
+  } catch {
     return { error: "Ogiltigt datum eller klockslag." };
   }
-  const endAt = data.endTime ? new Date(`${data.date}T${data.endTime}`) : null;
+  // Ett nattligt uppdrag slutar efter midnatt, som ett kvällspass.
   if (endAt && endAt <= startAt) {
-    return { error: "Sluttiden måste vara efter starttiden." };
+    endAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
   }
 
   // Löpnummer som är läsbart i fält och i rapporter.

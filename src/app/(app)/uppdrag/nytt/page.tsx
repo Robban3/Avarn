@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
-import { seesAllRegions } from "@/lib/authz";
+import { regionScope, seesAllRegions } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 
@@ -32,7 +32,13 @@ export default async function NewMissionPage() {
         : { id: user.regionId ?? "__ingen_region__" },
       orderBy: { sortOrder: "asc" },
     }),
-    db.customer.findMany({ orderBy: { name: "asc" } }),
+    db.customer.findMany({
+      // Samma avgränsning som regionlistan ovanför.
+      where: seesAllRegions(user)
+        ? {}
+        : { missions: { some: regionScope(user) } },
+      orderBy: { name: "asc" },
+    }),
     db.searchDiscipline.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
 

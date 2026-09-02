@@ -333,6 +333,9 @@ export async function approveReport(formData: FormData) {
   if (report.status !== "SUBMITTED") {
     throw new Error("Rapporten är inte inskickad för granskning.");
   }
+  if (report.authorId === user.id) {
+    throw new Error("Du kan inte godkänna din egen rapport.");
+  }
 
   await db.operationalReport.update({
     where: { id: report.id },

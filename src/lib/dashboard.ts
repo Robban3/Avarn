@@ -83,7 +83,8 @@ export async function monthlyStats(user: SessionUser) {
  */
 export async function importantNotices(user: SessionUser, take = 4) {
   const limit = new Date();
-  limit.setDate(limit.getDate() + (await getSettings()).certWarningDays);
+  const { certWarningDays } = await getSettings();
+  limit.setDate(limit.getDate() + certWarningDays);
 
   const teams = await db.team.findMany({
     where: teamScope(user),
@@ -127,7 +128,7 @@ export async function importantNotices(user: SessionUser, take = 4) {
             ? `“${cert.type.name}” har gått ut`
             : `“${cert.type.name}” går ut om ${days} ${days === 1 ? "dag" : "dagar"}`,
         href: "/certifikat",
-        urgent: certStatus(cert.expiresAt) !== "VALID",
+        urgent: certStatus(cert.expiresAt, certWarningDays) !== "VALID",
         at: cert.expiresAt,
       };
     }),

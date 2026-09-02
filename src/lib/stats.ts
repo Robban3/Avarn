@@ -4,6 +4,7 @@ import { seesAllRegions, teamScope } from "./authz";
 import type { SessionUser } from "./session";
 import { durationMinutes } from "./format";
 import { certStatus } from "./certifications";
+import { getSettings } from "./settings";
 
 /**
  * Aggregat för instruktörs- och ledningsvyerna. Vyerna läser siffror, inte
@@ -130,7 +131,8 @@ export async function trainingHoursByMonth(
   const buckets = monthsBack(months);
   const sessions = await db.trainingSession.findMany({
     where: {
-      team: { ...teamScope(user), ...(regionId ? { regionId } : {}) },
+      // AND, inte spread – annars skriver regionId över avgränsningen.
+      team: { AND: [teamScope(user), regionId ? { regionId } : {}] },
       startAt: { gte: buckets[0].start },
     },
     select: { startAt: true, endAt: true },
@@ -151,9 +153,8 @@ export async function capacityByDiscipline(
 ) {
   const teams = await db.team.findMany({
     where: {
-      ...teamScope(user),
+      AND: [teamScope(user), regionId ? { regionId } : {}],
       status: "ACTIVE",
-      ...(regionId ? { regionId } : {}),
     },
     include: {
       dog: { include: { disciplines: { include: { discipline: true } } } },
@@ -229,8 +230,9 @@ export async function certificationAlerts(user: SessionUser, take = 10) {
     select: { id: true, dogId: true, handlerId: true },
   });
 
+  const { certWarningDays } = await getSettings();
   const limit = new Date();
-  limit.setDate(limit.getDate() + 60);
+  limit.setDate(limit.getDate() + certWarningDays);
 
   const certifications = await db.certification.findMany({
     where: {
@@ -253,6 +255,6 @@ export async function certificationAlerts(user: SessionUser, take = 10) {
 
   return certifications.map((cert) => ({
     cert,
-    status: certStatus(cert.expiresAt),
+    status: certStatus(cert.expiresAt, certWarningDays),
   }));
 }

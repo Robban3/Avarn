@@ -4,13 +4,13 @@ import { AppShell } from "@/components/AppShell";
 import { SectionHeader, StatRow, StatTile } from "@/components/ui";
 import { BarChart, HorizontalBars } from "@/components/BarChart";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
-import { seesAllRegions, teamScope } from "@/lib/authz";
+import { regionScope, seesAllRegions, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import {
   capacityByDiscipline,
   coverageByRegion,
   overviewStats,
-  startOfMonth,
+  rollingFrom,
   trainingHoursByMonth,
 } from "@/lib/stats";
 import { MISSION_STATUS_LABELS } from "@/lib/domain";
@@ -47,9 +47,14 @@ export default async function LeadershipPage({
     db.region.findMany({ orderBy: { sortOrder: "asc" } }),
     db.mission.groupBy({
       by: ["status"],
+      // regionScope avgränsar till användarens region; regionFilter kan bara
+      // smalna av ytterligare och sätts ändå bara för nationell nivå.
       where: {
-        startAt: { gte: startOfMonth() },
-        ...(regionFilter ? { regionId: regionFilter } : {}),
+        AND: [
+          regionScope(user),
+          regionFilter ? { regionId: regionFilter } : {},
+          { startAt: { gte: rollingFrom() } },
+        ],
       },
       _count: { _all: true },
     }),

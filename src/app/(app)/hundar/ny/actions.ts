@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { assertCan, seesAllRegions } from "@/lib/authz";
+import { assertCan, can, seesAllRegions } from "@/lib/authz";
 import { audit } from "@/lib/audit";
 import { ROLES } from "@/lib/domain";
 
@@ -48,6 +48,12 @@ export async function createDog(
   // förare, men bara inom sin egen behörighet.
   let handlerId = user.id;
   if (data.handlerId && data.handlerId !== user.id) {
+    // Att välja en annan förare är en chefsåtgärd. Gränssnittet döljer
+    // väljaren, men kontrollen måste finnas här också – annars räcker det
+    // att posta ett annat handlerId i formuläret.
+    if (!can(user, "dog:manage")) {
+      return { error: "Du kan bara registrera hund åt dig själv." };
+    }
     const allowed = await db.user.findFirst({
       where: {
         id: data.handlerId,

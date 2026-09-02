@@ -132,19 +132,24 @@ export function ageInYears(birthDate: Date, now = new Date()) {
   return age;
 }
 
-/** Skillnad i hela dagar; negativt om datumet har passerat. */
+/**
+ * Skillnad i hela kalenderdygn i svensk tid; negativt om datumet passerat.
+ *
+ * Räknas på dygn och inte på varaktighet: ett certifikat som går ut imorgon
+ * är "1 dag kvar" oavsett om klockan är sju eller nio. Math.ceil på rå
+ * varaktighet gav dessutom -0 för något som nyss gått ut, och -0 < 0 är
+ * falskt – ett utgånget certifikat räknades då som "går snart ut".
+ */
 export function daysUntil(date: Date, now = new Date()) {
-  const ms = date.getTime() - now.getTime();
-  return Math.ceil(ms / 86_400_000);
+  const dygn = (d: Date) => Date.parse(`${dateKey(d)}T00:00:00Z`);
+  return Math.round((dygn(date) - dygn(now)) / 86_400_000);
 }
 
 /** "Idag 10:15", "Igår 16:45", "3 dagar sedan", annars datum. */
 export function formatRelative(date: Date, now = new Date()) {
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round(
-    (startOfDay(now) - startOfDay(date)) / 86_400_000,
-  );
+  // Dygnsgränsen går vid midnatt svensk tid, inte vid serverns midnatt –
+  // annars blir en kommentar skriven 00:30 "Igår" redan samma morgon.
+  const diffDays = -daysUntil(date, now);
 
   if (diffDays === 0) return `Idag ${formatTime(date)}`;
   if (diffDays === 1) return `Igår ${formatTime(date)}`;

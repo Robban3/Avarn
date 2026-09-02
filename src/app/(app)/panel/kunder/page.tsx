@@ -4,6 +4,7 @@ import { ChartCard } from "@/components/AdminCharts";
 import { Table, Td, Th } from "@/components/PanelUI";
 import { requireCapability } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { regionScope, seesAllRegions } from "@/lib/authz";
 import { formatShortDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Kunder" };
@@ -11,9 +12,15 @@ export const metadata: Metadata = { title: "Kunder" };
 export default async function PanelCustomersPage() {
   const user = await requireCapability("stats:view");
 
+  // En kund syns om den har uppdrag inom användarens region. En regionalt
+  // ansvarig ska inte se andra regioners kundregister, och uppdragslistan
+  // per kund avgränsas på samma sätt.
+  const omrade = regionScope(user);
   const kunder = await db.customer.findMany({
+    where: seesAllRegions(user) ? {} : { missions: { some: omrade } },
     include: {
       missions: {
+        where: omrade,
         select: { id: true, startAt: true, status: true, title: true },
         orderBy: { startAt: "desc" },
       },
