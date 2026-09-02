@@ -51,8 +51,8 @@ import {
   latestMissions,
   missionsByDiscipline,
   periodFran,
-  startOfMonth,
-  startOfPreviousMonth,
+  previousRollingFrom,
+  rollingFrom,
   teamRows,
 } from "@/lib/panel";
 import { certStatus } from "@/lib/certifications";
@@ -99,8 +99,8 @@ export default async function PanelPage({
     regioner,
     inriktningar,
   ] = await Promise.all([
-    periodStats(user, startOfMonth()),
-    periodStats(user, startOfPreviousMonth(), startOfMonth()),
+    periodStats(user, rollingFrom()),
+    periodStats(user, previousRollingFrom(), rollingFrom()),
     dogCount(user),
     missionsByDiscipline(user, fran),
     trainingHoursByMonth(user, 6),
@@ -129,13 +129,13 @@ export default async function PanelPage({
     },
     {
       icon: <BriefcaseIcon className="h-5 w-5" />,
-      label: "Uppdrag denna månad",
+      label: "Uppdrag senaste 30 dagarna",
       value: String(denna.missionCount),
       change: change(denna.missionCount, forra.missionCount),
     },
     {
       icon: <ClockIcon className="h-5 w-5" />,
-      label: "Träningstimmar",
+      label: "Träningstimmar 30 dagar",
       value: `${denna.trainingHours} h`,
       change: change(denna.trainingHours, forra.trainingHours, " h"),
     },

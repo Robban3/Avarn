@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { teamScope } from "./authz";
 import type { SessionUser } from "./session";
-import { periodStats, startOfMonth, startOfPreviousMonth } from "./stats";
+import { periodStats, previousRollingFrom, rollingFrom } from "./stats";
 import { certStatus } from "./certifications";
 import { daysUntil } from "./format";
 import { getSettings } from "./settings";
@@ -44,23 +44,24 @@ export async function availabilityNow(user: SessionUser) {
     : { available: false, note: "Ingen tjänstgöring inlagd" };
 }
 
-/** Nyckeltal för innevarande månad, med förändringen mot förra månaden. */
+/** Nyckeltal för de senaste 30 dagarna, jämförda med de 30 dessförinnan. */
 export async function monthlyStats(user: SessionUser) {
-  const thisMonth = startOfMonth();
-  const lastMonth = startOfPreviousMonth();
+  const nu = rollingFrom();
+  const innan = previousRollingFrom();
 
   const [current, previous] = await Promise.all([
-    periodStats(user, thisMonth),
-    periodStats(user, lastMonth, thisMonth),
+    periodStats(user, nu),
+    periodStats(user, innan, nu),
   ]);
 
   /** Formaterar skillnaden mellan två tal som text och riktning. */
   const change = (now: number | null, before: number | null, suffix = "") => {
     if (now === null || before === null) return null;
     const diff = now - before;
-    if (diff === 0) return { text: "oförändrat mot förra månaden", direction: "flat" as const };
+    if (diff === 0)
+      return { text: "oförändrat mot föregående 30 dagar", direction: "flat" as const };
     return {
-      text: `${Math.abs(diff)}${suffix} från förra månaden`,
+      text: `${Math.abs(diff)}${suffix} mot föregående 30 dagar`,
       direction: diff > 0 ? ("up" as const) : ("down" as const),
     };
   };

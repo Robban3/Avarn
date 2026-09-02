@@ -107,7 +107,7 @@ export default async function LeadershipPage({
 
       <StatRow>
         <StatTile value={stats.teamCount} label="Aktiva ekipage" />
-        <StatTile value={stats.missionCount} label="Uppdrag denna månad" />
+        <StatTile value={stats.missionCount} label="Uppdrag senaste 30 dagarna" />
         <StatTile value={stats.trainingHours} label="Träningstimmar" />
       </StatRow>
 

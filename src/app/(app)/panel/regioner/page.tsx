@@ -70,7 +70,7 @@ export default async function PanelRegionsPage() {
                   <Th>Region</Th>
                   <Th className="text-right">Ekipage</Th>
                   <Th className="text-right">Tillgängliga nu</Th>
-                  <Th className="text-right">Uppdrag denna månad</Th>
+                  <Th className="text-right">Uppdrag 30 dagar</Th>
                   <Th className="text-right">Träningstimmar</Th>
                 </tr>
               </thead>

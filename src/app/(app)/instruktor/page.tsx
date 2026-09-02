@@ -113,8 +113,8 @@ export default async function InstructorPage() {
       {/* Nyckeltal */}
       <StatRow>
         <StatTile value={stats.teamCount} label="Ekipage" />
-        <StatTile value={stats.missionCount} label="Uppdrag denna månad" />
-        <StatTile value={stats.trainingHours} label="Träningstimmar denna månad" />
+        <StatTile value={stats.missionCount} label="Uppdrag senaste 30 dagarna" />
+        <StatTile value={stats.trainingHours} label="Träningstimmar 30 dagar" />
       </StatRow>
 
       {pendingReview > 0 ? (

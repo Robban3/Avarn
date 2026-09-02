@@ -3,7 +3,7 @@ import { db } from "./db";
 import { teamScope, seesAllRegions } from "./authz";
 import type { SessionUser } from "./session";
 import { durationMinutes } from "./format";
-import { startOfMonth, startOfPreviousMonth } from "./stats";
+import { previousRollingFrom, rollingFrom } from "./stats";
 import { getSettings } from "./settings";
 import {
   DISCIPLINE_CERT,
@@ -31,7 +31,7 @@ export async function dogCount(user: SessionUser) {
     select: { dogId: true, dog: { select: { status: true, createdAt: true } } },
   });
   const aktiva = teams.filter((t) => t.dog.status === "ACTIVE");
-  const forra = aktiva.filter((t) => t.dog.createdAt < startOfMonth()).length;
+  const forra = aktiva.filter((t) => t.dog.createdAt < rollingFrom()).length;
   return { count: aktiva.length, change: aktiva.length - forra };
 }
 
@@ -180,14 +180,17 @@ export function change(now: number | null, before: number | null, suffix = "") {
   if (now === null || before === null) return null;
   const diff = now - before;
   if (diff === 0)
-    return { text: "oförändrat mot förra månaden", direction: "flat" as const };
+    return {
+      text: "oförändrat mot föregående 30 dagar",
+      direction: "flat" as const,
+    };
   return {
-    text: `${Math.abs(diff)}${suffix} från förra månaden`,
+    text: `${Math.abs(diff)}${suffix} mot föregående 30 dagar`,
     direction: diff > 0 ? ("up" as const) : ("down" as const),
   };
 }
 
-export { startOfMonth, startOfPreviousMonth };
+export { previousRollingFrom, rollingFrom };
 
 /**
  * Varningsvyn för certifikat. Skiljer på fyra lägen, eftersom åtgärden är

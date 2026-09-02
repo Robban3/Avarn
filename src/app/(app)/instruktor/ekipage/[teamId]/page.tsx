@@ -26,7 +26,7 @@ import {
 } from "@/lib/format";
 import { SESSION_STATUS_LABELS } from "@/lib/domain";
 import { certStatus } from "@/lib/certifications";
-import { startOfMonth } from "@/lib/stats";
+import { rollingFrom } from "@/lib/stats";
 import { FollowUpForm } from "./follow-up-form";
 import { closeFollowUp } from "../../actions";
 
@@ -68,7 +68,7 @@ export default async function InstructorTeamPage({
 
   if (!team) notFound();
 
-  const since = startOfMonth();
+  const since = rollingFrom();
   const monthSessions = team.trainingSessions.filter((s) => s.startAt >= since);
   const monthHours = Math.round(
     monthSessions.reduce(
@@ -119,7 +119,7 @@ export default async function InstructorTeamPage({
       </section>
 
       <StatRow>
-        <StatTile value={monthSessions.length} label="Pass denna månad" />
+        <StatTile value={monthSessions.length} label="Pass senaste 30 dagarna" />
         <StatTile value={monthHours} label="Träningstimmar" />
         <StatTile
           value={recentRate === null ? "—" : `${recentRate}%`}

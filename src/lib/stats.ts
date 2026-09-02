@@ -10,6 +10,28 @@ import { certStatus } from "./certifications";
  * rapporttexter – statistik ska inte kunna bli en väg runt behörigheterna.
  */
 
+/**
+ * Nyckeltalens tidsfönster: de senaste 30 dagarna, inte kalendermånaden.
+ *
+ * Med kalendermånad står appen på noll den första i månaden och ser trasig
+ * ut i en vecka, fast den räknar rätt. Ett rullande fönster ger alltid
+ * siffror och gör dessutom jämförelsen rättvis – två lika långa perioder
+ * i stället för "två dagar mot trettioen".
+ */
+export const FONSTER_DAGAR = 30;
+
+/** Början på det rullande fönstret. */
+export function rollingFrom(days = FONSTER_DAGAR, date = new Date()) {
+  const from = new Date(date);
+  from.setDate(from.getDate() - days);
+  return from;
+}
+
+/** Början på fönstret dessförinnan, för jämförelsetalet. */
+export function previousRollingFrom(days = FONSTER_DAGAR, date = new Date()) {
+  return rollingFrom(days * 2, date);
+}
+
 export function startOfMonth(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -95,7 +117,7 @@ export async function periodStats(
 }
 
 /** Nyckeltal för innevarande månad. Används av instruktörs- och ledningsvyn. */
-export async function overviewStats(user: SessionUser, since = startOfMonth()) {
+export async function overviewStats(user: SessionUser, since = rollingFrom()) {
   return periodStats(user, since);
 }
 
@@ -166,7 +188,7 @@ export async function coverageByRegion(user: SessionUser) {
       : { id: user.regionId ?? "__ingen_region__" },
     orderBy: { sortOrder: "asc" },
   });
-  const since = startOfMonth();
+  const since = rollingFrom();
 
   return Promise.all(
     regions.map(async (region) => {
