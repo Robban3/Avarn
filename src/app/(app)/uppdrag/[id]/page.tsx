@@ -6,7 +6,6 @@ import {
   Badge,
   DetailList,
   DetailRow,
-  DisciplineTag,
   SectionHeader,
   Avatar,
 } from "@/components/ui";
@@ -15,24 +14,36 @@ import {
   CalendarIcon,
   ClipboardIcon,
   MapPinIcon,
+  MessageIcon,
+  PencilIcon,
+  PhoneIcon,
+  RouteIcon,
   ScentIcon,
+  ShieldIcon,
   UserIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
-import { can, regionScope, teamScope } from "@/lib/authz";
+import { can, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import {
-  formatDate,
+  formatDayNumber,
+  formatMonthShort,
   formatTimeRange,
   formatShortDate,
+  formatWeekday,
+  listaFranText,
 } from "@/lib/format";
 import {
   ASSIGNMENT_STATUS_LABELS,
   MISSION_STATUS_LABELS,
   REPORT_STATUS_LABELS,
+  assignmentTone,
+  missionTone,
   reportTone,
 } from "@/lib/domain";
+import { missionForUser } from "@/lib/queries";
 import { assignTeam, respondToAssignment, setMissionStatus } from "../actions";
 import { suggestTeams } from "@/lib/assignment";
 
@@ -50,27 +61,8 @@ export default async function MissionPage({
   ).map((t) => t.id);
 
   // Ledningen når uppdrag i sin region; hundföraren bara sina tilldelade.
-  const mission = await db.mission.findFirst({
-    where: can(user, "mission:assign")
-      ? { id, ...regionScope(user) }
-      : { id, assignments: { some: { teamId: { in: teamIds } } } },
-    include: {
-      customer: true,
-      discipline: true,
-      region: true,
-      createdBy: true,
-      assignments: {
-        include: {
-          team: { include: { dog: true, handler: true, region: true } },
-          assignedBy: true,
-        },
-      },
-      reports: {
-        include: { team: { include: { dog: true } }, author: true },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  // Avgränsningen bor i queries.ts eftersom detaljvyn delar den.
+  const mission = await missionForUser(user, id);
 
   if (!mission) notFound();
 
@@ -97,49 +89,69 @@ export default async function MissionPage({
     ? await suggestTeams(user, mission)
     : [];
 
+  const utrustning = listaFranText(mission.equipment);
+  const detaljer = `/uppdrag/${mission.id}/detaljer`;
+
   return (
     <AppShell
       title="Uppdrag"
       backHref="/uppdrag"
       unread={unread}
       role={user.role}
+      action={
+        canAssign ? (
+          <Link
+            href={`/uppdrag/${mission.id}/redigera`}
+            aria-label="Redigera uppdraget"
+            className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full text-fg transition-colors hover:bg-surface-2"
+          >
+            <PencilIcon className="h-[22px] w-[22px]" />
+          </Link>
+        ) : undefined
+      }
     >
-      <section className="card mb-4 p-4">
-        <div className="mb-2 flex items-start justify-between gap-3">
+      {/* 1. Status, rubrik och uppdragsnummer */}
+      <section className="mb-4">
+        <div className="mb-2.5 flex items-start justify-between gap-3">
+          <Badge tone={missionTone(mission.status)}>
+            {MISSION_STATUS_LABELS[mission.status] ?? mission.status}
+          </Badge>
+          <span className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11px] font-medium text-fg-muted">
+            ID: {mission.reference}
+          </span>
+        </div>
+        <h2 className="text-[22px] font-bold leading-tight">{mission.title}</h2>
+        <p className="mt-1 text-sm text-fg-muted">{mission.locality}</p>
+      </section>
+
+      {/* 2. När – med kalendernedladdning så att knappen betyder något */}
+      <section className="card mb-4 flex items-stretch">
+        <div className="flex flex-1 items-center gap-3 p-4">
+          <CalendarIcon className="h-[18px] w-[18px] shrink-0 text-fg-dim" />
+          <div className="flex shrink-0 flex-col items-center leading-none">
+            <span className="text-[22px] font-bold">
+              {formatDayNumber(mission.startAt)}
+            </span>
+            <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-fg-muted">
+              {formatMonthShort(mission.startAt)}
+            </span>
+          </div>
           <div className="min-w-0">
-            <p className="text-sm text-fg-muted">
-              {formatDate(mission.startAt)}
+            <p className="truncate text-sm capitalize text-fg-muted">
+              {formatWeekday(mission.startAt)}
             </p>
-            <p className="text-sm text-fg-muted">
+            <p className="truncate text-sm font-semibold">
               {formatTimeRange(mission.startAt, mission.endAt)}
             </p>
           </div>
-          {mission.discipline ? (
-            <DisciplineTag label={mission.discipline.shortLabel} />
-          ) : null}
         </div>
-        <h2 className="text-xl font-semibold leading-tight">{mission.title}</h2>
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-fg-muted">
-          <MapPinIcon className="h-4 w-4" />
-          {mission.address ? `${mission.address}, ` : ""}
-          {mission.locality}
-        </p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Badge
-            tone={
-              mission.status === "COMPLETED"
-                ? "ok"
-                : mission.status === "CANCELLED"
-                  ? "danger"
-                  : mission.status === "IN_PROGRESS"
-                    ? "brand"
-                    : "neutral"
-            }
-          >
-            {MISSION_STATUS_LABELS[mission.status] ?? mission.status}
-          </Badge>
-          <span className="text-xs text-fg-dim">{mission.reference}</span>
-        </div>
+        <a
+          href={`/uppdrag/${mission.id}/kalender`}
+          className="flex w-[112px] shrink-0 flex-col items-center justify-center gap-1.5 border-l border-line px-2 text-center text-[12px] font-medium text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+        >
+          <CalendarIcon className="h-[18px] w-[18px] text-brand" />
+          Lägg till i kalender
+        </a>
       </section>
 
       {/* Svar på tilldelning */}
@@ -169,63 +181,110 @@ export default async function MissionPage({
         </section>
       ) : null}
 
-      {/* Uppdragsuppgifter */}
-      <section className="mb-5">
-        <SectionHeader title="Uppdragsuppgifter" />
-        <DetailList>
+      {/* 3. Allt föraren behöver för att förbereda sig */}
+      <DetailList className="mb-4">
+        <DetailRow
+          icon={<ClipboardIcon className="h-[18px] w-[18px]" />}
+          label="Uppdragstyp"
+        >
+          {mission.missionType}
+        </DetailRow>
+        {mission.discipline ? (
           <DetailRow
-            icon={<ClipboardIcon className="h-[18px] w-[18px]" />}
-            label="Uppdragstyp"
+            icon={<ScentIcon className="h-[18px] w-[18px]" />}
+            label="Sökinriktning"
           >
-            {mission.missionType}
+            {mission.discipline.shortLabel}
           </DetailRow>
-          {mission.discipline ? (
-            <DetailRow
-              icon={<ScentIcon className="h-[18px] w-[18px]" />}
-              label="Sökdisciplin"
-            >
-              {mission.discipline.name}
-            </DetailRow>
-          ) : null}
-          {mission.customer ? (
-            <DetailRow
-              icon={<UserIcon className="h-[18px] w-[18px]" />}
-              label="Kund"
-            >
-              {mission.customer.name}
-            </DetailRow>
-          ) : null}
-          {mission.contactName ? (
-            <DetailRow label="Kontaktperson">{mission.contactName}</DetailRow>
-          ) : null}
-          {mission.contactPhone ? (
-            <DetailRow label="Telefon">
-              <a href={`tel:${mission.contactPhone}`} className="text-brand">
+        ) : null}
+        {mission.customer ? (
+          <DetailRow
+            icon={<UsersIcon className="h-[18px] w-[18px]" />}
+            label="Kund"
+          >
+            {mission.customer.name}
+          </DetailRow>
+        ) : null}
+        {mission.contactName || mission.contactPhone ? (
+          <DetailRow
+            icon={<UserIcon className="h-[18px] w-[18px]" />}
+            label="Kontaktperson"
+            action={
+              mission.contactPhone ? (
+                <div className="flex gap-2">
+                  <a
+                    href={`tel:${mission.contactPhone.replace(/\s/g, "")}`}
+                    aria-label={`Ring ${mission.contactName ?? "kontaktpersonen"}`}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/40 text-brand transition-colors hover:bg-brand/10"
+                  >
+                    <PhoneIcon className="h-[18px] w-[18px]" />
+                  </a>
+                  <a
+                    href={`sms:${mission.contactPhone.replace(/\s/g, "")}`}
+                    aria-label={`Skicka meddelande till ${mission.contactName ?? "kontaktpersonen"}`}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-brand/40 text-brand transition-colors hover:bg-brand/10"
+                  >
+                    <MessageIcon className="h-[18px] w-[18px]" />
+                  </a>
+                </div>
+              ) : undefined
+            }
+          >
+            <span className="block">{mission.contactName ?? "—"}</span>
+            {mission.contactPhone ? (
+              <span className="block text-xs text-fg-muted">
                 {mission.contactPhone}
-              </a>
-            </DetailRow>
-          ) : null}
-          <DetailRow
-            icon={<CalendarIcon className="h-[18px] w-[18px]" />}
-            label="Region"
-          >
-            {mission.region.name}
+              </span>
+            ) : null}
           </DetailRow>
-        </DetailList>
-      </section>
-
-      {/* Särskilda instruktioner */}
-      {mission.specialInstructions ? (
-        <section className="mb-5">
-          <SectionHeader title="Särskilda instruktioner" />
-          <div className="card flex gap-3 border-warn/25 bg-warn/6 p-4">
-            <AlertIcon className="h-5 w-5 shrink-0 text-warn" />
-            <p className="whitespace-pre-wrap text-sm text-fg">
+        ) : null}
+        <DetailRow
+          icon={<MapPinIcon className="h-[18px] w-[18px]" />}
+          label="Plats"
+          href={detaljer}
+        >
+          <span className="block">{mission.address ?? mission.locality}</span>
+          {mission.address ? (
+            <span className="block text-xs text-fg-muted">
+              {mission.locality}
+            </span>
+          ) : null}
+        </DetailRow>
+        {mission.meetingPoint ? (
+          <DetailRow
+            icon={<RouteIcon className="h-[18px] w-[18px]" />}
+            label="Mötesplats"
+            href={`${detaljer}?flik=plats`}
+          >
+            {mission.meetingPoint}
+          </DetailRow>
+        ) : null}
+        {mission.specialInstructions ? (
+          <DetailRow
+            icon={<AlertIcon className="h-[18px] w-[18px]" />}
+            label="Särskilda instruktioner"
+            align="column"
+          >
+            <span className="whitespace-pre-wrap text-fg-muted">
               {mission.specialInstructions}
-            </p>
-          </div>
-        </section>
-      ) : null}
+            </span>
+          </DetailRow>
+        ) : null}
+        {utrustning.length > 0 ? (
+          <DetailRow
+            icon={<ShieldIcon className="h-[18px] w-[18px]" />}
+            label="Utrustning / krav"
+          >
+            {utrustning.join(", ")}
+          </DetailRow>
+        ) : null}
+      </DetailList>
+
+      {/* 4. Vägen vidare till plats- och kartvyn */}
+      <Link href={detaljer} className="btn btn-secondary mb-6 w-full">
+        <MapPinIcon className="h-[18px] w-[18px] text-brand" />
+        Visa på karta
+      </Link>
 
       {/* Tilldelade ekipage */}
       <section className="mb-5">
@@ -251,17 +310,7 @@ export default async function MissionPage({
                     {assignment.team.region.name}
                   </p>
                 </div>
-                <Badge
-                  tone={
-                    assignment.status === "ACCEPTED"
-                      ? "ok"
-                      : assignment.status === "DECLINED"
-                        ? "danger"
-                        : assignment.status === "COMPLETED"
-                          ? "neutral"
-                          : "warn"
-                  }
-                >
+                <Badge tone={assignmentTone(assignment.status)}>
                   {ASSIGNMENT_STATUS_LABELS[assignment.status] ??
                     assignment.status}
                 </Badge>
@@ -298,7 +347,13 @@ export default async function MissionPage({
                   <form action={assignTeam}>
                     <input type="hidden" name="missionId" value={mission.id} />
                     <input type="hidden" name="teamId" value={s.team.id} />
-                    <button type="submit" className="btn btn-secondary px-3 py-2 text-xs">
+                    {/* Namnet i etiketten: annars heter alla knapparna i
+                        listan likadant, både för ögat och för uppläsning. */}
+                    <button
+                      type="submit"
+                      aria-label={`Tilldela ${s.team.dog.name}`}
+                      className="btn btn-secondary px-3 py-2 text-xs"
+                    >
                       Tilldela
                     </button>
                   </form>

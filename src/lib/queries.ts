@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "./db";
-import { teamScope } from "./authz";
+import { can, regionScope, teamScope } from "./authz";
 import type { SessionUser } from "./session";
 import { getSettings } from "./settings";
 
@@ -97,4 +97,50 @@ export async function recentSessions(user: SessionUser, take = 10) {
     orderBy: { startAt: "desc" },
     take,
   });
+}
+
+/**
+ * Ett uppdrag med allt som uppdragsvyerna behöver, inom behörigheten.
+ *
+ * Ledningen når uppdrag i sin region; hundföraren bara dem hens ekipage
+ * är tilldelade. Frågan bor här och inte i sidan eftersom tre vyer delar
+ * den – uppdragssidan, detaljvyn och redigeringssidan – och två kopior av
+ * en behörighetsfråga är precis så en läcka uppstår.
+ *
+ * Returnerar null när uppdraget inte finns eller ligger utanför
+ * behörigheten. Anroparen svarar 404 i båda fallen, så att id:n inte går
+ * att räkna upp.
+ */
+export async function missionForUser(user: SessionUser, id: string) {
+  const scope = teamScope(user);
+
+  return db.mission.findFirst({
+    where: can(user, "mission:assign")
+      ? { id, ...regionScope(user) }
+      : { id, assignments: { some: { team: scope } } },
+    include: {
+      customer: true,
+      discipline: true,
+      region: true,
+      createdBy: true,
+      assignments: {
+        include: {
+          team: { include: { dog: true, handler: true, region: true } },
+          assignedBy: true,
+        },
+      },
+      reports: {
+        include: { team: { include: { dog: true } }, author: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+}
+
+/** Ekipagen i uppdraget som användaren själv är förare för. */
+export function ownAssignments<T extends { team: { handlerId: string } }>(
+  user: SessionUser,
+  assignments: T[],
+) {
+  return assignments.filter((a) => a.team.handlerId === user.id);
 }

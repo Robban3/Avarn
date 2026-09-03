@@ -51,10 +51,15 @@ test("rapport: utkast göms inte undan utan går att slutföra", async ({
 }) => {
   await loggaIn(page, KONTON.hundforare);
 
-  // UPP-2451 är accepterat av Novas ekipage och saknar rapport.
-  await page.goto("/rapporter/nytt");
-  await page.getByRole("link", { name: /UPP-2451/ }).click();
-  await page.waitForURL(/uppdrag=/);
+  // Flygplatskontrollen är accepterad av Novas ekipage. Uppdraget hämtas
+  // ur uppdragslistan och rapportformuläret öppnas direkt på det: finns
+  // det redan en påbörjad rapport leder rapportväljaren dit i stället,
+  // och provet ska gå att köra om utan att exempeldatan läggs tillbaka.
+  await page.goto("/uppdrag");
+  await page.getByRole("link", { name: /Flygplatskontroll/ }).first().click();
+  await page.waitForURL(/\/uppdrag\/[^/]+$/);
+  const uppdragsId = new URL(page.url()).pathname.split("/").pop();
+  await page.goto(`/rapporter/nytt?uppdrag=${uppdragsId}`);
 
   await page.fill('textarea[name="findings"]', "Preliminärt: inga fynd.");
   await page.fill('input[name="indication-0-location"]', "Bagageband 1");
@@ -81,7 +86,7 @@ test("rapport: utkast göms inte undan utan går att slutföra", async ({
   ).toHaveValue("Bagageband 1");
 
   await page.fill('textarea[name="findings"]', "Inga fynd. Söket avslutat.");
-  await page.getByRole("button", { name: "Skicka in rapporten" }).click();
+  await page.getByRole("button", { name: "Skicka rapport" }).click();
   await väntaPåRapport(page);
 
   await expect(page.getByText("Inga fynd. Söket avslutat.")).toBeVisible();

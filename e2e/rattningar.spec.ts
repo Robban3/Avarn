@@ -39,7 +39,12 @@ test("två uppdrag i rad får olika referensnummer", async ({ page }) => {
     await page.fill('input[name="missionType"]', "Områdessök");
     await page.fill('input[name="locality"]', "Provorten");
     await page.getByRole("button", { name: "Lägg upp uppdraget" }).click();
-    await page.waitForURL(/\/uppdrag\/[^/]+$/);
+    // /uppdrag/nytt räknas bort, annars matchar väntan sidan vi står på.
+    await page.waitForURL(
+      (url) =>
+        /^\/uppdrag\/[^/]+$/.test(url.pathname) &&
+        !url.pathname.endsWith("/nytt"),
+    );
     const referens = await page.getByText(/UPP-\d+/).first().innerText();
     return referens.match(/UPP-\d+/)?.[0];
   };

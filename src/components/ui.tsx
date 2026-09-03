@@ -28,6 +28,43 @@ export function PageHeading({
   );
 }
 
+/* ----------------------------------------------------------------- Flikar */
+
+/**
+ * Flikrad med understruken aktiv flik.
+ *
+ * Fliken hålls i adressen och inte i state, som överallt annars i appen –
+ * då fungerar bakåtknappen, och sidan kan förbli en serverkomponent.
+ */
+export function Tabs({
+  tabs,
+  active,
+  hrefFor,
+}: {
+  tabs: { value: string; label: string }[];
+  active: string;
+  hrefFor: (value: string) => string;
+}) {
+  return (
+    <div className="no-scrollbar -mx-4 mb-4 flex overflow-x-auto border-b border-line px-4">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.value}
+          href={hrefFor(tab.value)}
+          aria-current={active === tab.value ? "page" : undefined}
+          className={`shrink-0 px-4 pb-2.5 text-center text-[13px] font-semibold uppercase tracking-wide transition-colors ${
+            active === tab.value
+              ? "border-b-2 border-brand text-brand"
+              : "text-fg-dim hover:text-fg-muted"
+          }`}
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------- Sektioner */
 
 /** Versal sektionsrubrik med valfri "Visa alla"-länk till höger. */
@@ -182,15 +219,21 @@ export function DetailRow({
   label,
   children,
   align = "row",
+  href,
+  action,
 }: {
   icon?: ReactNode;
   label: string;
   children: ReactNode;
   /** "column" när värdet är en längre text som behöver egen rad. */
   align?: "row" | "column";
+  /** Gör hela raden klickbar och lägger till en pil, som listorna i appen. */
+  href?: string;
+  /** Knappar längst till höger, t.ex. ring och meddelande på en kontakt. */
+  action?: ReactNode;
 }) {
-  return (
-    <div className="flex gap-3 px-4 py-3">
+  const innehall = (
+    <>
       {icon ? (
         <span className="mt-0.5 shrink-0 text-fg-dim">{icon}</span>
       ) : null}
@@ -212,6 +255,25 @@ export function DetailRow({
           {children}
         </div>
       </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex gap-3 px-4 py-3 transition-colors hover:bg-surface-2"
+      >
+        {innehall}
+        <ChevronRightIcon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-fg-dim" />
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 px-4 py-3">
+      {innehall}
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }

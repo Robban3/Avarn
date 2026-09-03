@@ -79,12 +79,35 @@ export const MISSION_STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Inställt",
 };
 
+/**
+ * Färgton för uppdragets status.
+ *
+ * Låg tidigare i tre kopior – uppdragslistan, uppdragssidan och panelen –
+ * som sa olika saker om samma status. Ett tilldelat uppdrag var turkost i
+ * listan och grått på sidan.
+ */
+export function missionTone(status: string) {
+  if (status === "COMPLETED") return "ok" as const;
+  if (status === "CANCELLED") return "danger" as const;
+  if (status === "IN_PROGRESS") return "brand" as const;
+  if (status === "ASSIGNED") return "brand" as const;
+  return "neutral" as const;
+}
+
 export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   OFFERED: "Erbjudet",
   ACCEPTED: "Accepterat",
   DECLINED: "Avböjt",
   COMPLETED: "Genomfört",
 };
+
+/** Färgton för tilldelningens status, med samma logik som uppdragets. */
+export function assignmentTone(status: string) {
+  if (status === "ACCEPTED") return "ok" as const;
+  if (status === "DECLINED") return "danger" as const;
+  if (status === "COMPLETED") return "neutral" as const;
+  return "warn" as const;
+}
 
 export const REPORT_STATUS = {
   DRAFT: "DRAFT",

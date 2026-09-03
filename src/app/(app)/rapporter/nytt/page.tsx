@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Badge, EmptyState, SectionHeader } from "@/components/ui";
 import { BriefcaseIcon } from "@/components/icons";
+import { ReportHeader } from "@/components/ReportHeader";
 import { requireCapability, unreadNotificationCount } from "@/lib/auth";
 import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -127,7 +128,7 @@ export default async function NewReportPage({
   const assignments = await db.missionAssignment.findMany({
     where: { missionId, team: teamScope(user) },
     include: {
-      mission: true,
+      mission: { include: { discipline: true, customer: true } },
       team: { include: { dog: true, handler: true } },
     },
   });
@@ -135,13 +136,31 @@ export default async function NewReportPage({
   if (assignments.length === 0) notFound();
   const mission = assignments[0].mission;
 
+  // Tryckte föraren "Starta uppdrag" är det den tiden som gäller, inte
+  // uppdragets planerade start.
+  const paborjat =
+    assignments.find((a) => a.startedAt)?.startedAt ?? mission.startAt;
+
   return (
     <AppShell
-      title="Operativ rapport"
+      title="Uppdrag – rapport"
       backHref={`/uppdrag/${mission.id}`}
       unread={unread}
       role={user.role}
+      action={
+        <button
+          type="submit"
+          form="rapport-form"
+          name="submit"
+          value="utkast"
+          className="-mr-2 rounded-full px-3 py-2 text-[13px] font-semibold text-brand transition-colors hover:bg-surface-2"
+        >
+          Spara
+        </button>
+      }
     >
+      <ReportHeader mission={mission} status="DRAFT" />
+
       <ReportForm
         action={createReport}
         mission={{
@@ -150,15 +169,23 @@ export default async function NewReportPage({
           title: mission.title,
           missionType: mission.missionType,
           locality: mission.locality,
+          discipline: mission.discipline?.name ?? null,
+          customer: mission.customer?.name ?? null,
         }}
         teams={assignments.map((a) => ({
           id: a.teamId,
           label: `${a.team.dog.name} · ${a.team.handler.name}`,
         }))}
         defaults={{
-          startedAt: toLocalInput(mission.startAt),
+          startedAt: toLocalInput(paborjat),
           endedAt: toLocalInput(mission.endAt ?? mission.startAt),
         }}
+        genomfortAv={user.name}
+        bilder={
+          <p className="text-sm text-fg-muted">
+            Bilder och filmer läggs till när rapporten är sparad en gång.
+          </p>
+        }
       />
     </AppShell>
   );

@@ -14,6 +14,7 @@ import {
   CheckCircleIcon,
   ClipboardIcon,
   MapPinIcon,
+  MessageIcon,
   PencilIcon,
   ScentIcon,
   ShieldIcon,
@@ -27,6 +28,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import {
   formatDate,
+  formatNumber,
   formatTimeRange,
   formatShortDate,
 } from "@/lib/format";
@@ -147,6 +149,11 @@ export default async function ReportPage({
             <p className="whitespace-pre-wrap text-fg-muted">
               {report.areasSearched || "—"}
             </p>
+            {report.areaSize !== null ? (
+              <p className="mt-1 text-fg-dim">
+                Yta ca {formatNumber(report.areaSize, 0)} m²
+              </p>
+            ) : null}
           </DetailRow>
           <DetailRow
             icon={<ScentIcon className="h-[18px] w-[18px]" />}
@@ -181,6 +188,17 @@ export default async function ReportPage({
               {report.actions || "—"}
             </p>
           </DetailRow>
+          {report.comment ? (
+            <DetailRow
+              icon={<MessageIcon className="h-[18px] w-[18px]" />}
+              label="Kommentar"
+              align="column"
+            >
+              <p className="whitespace-pre-wrap text-fg-muted">
+                {report.comment}
+              </p>
+            </DetailRow>
+          ) : null}
         </DetailList>
       </section>
 

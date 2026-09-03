@@ -43,6 +43,7 @@ export function SettingForm({
   varde,
   typ,
   andrad,
+  version,
 }: {
   nyckel: string;
   rubrik: string;
@@ -51,6 +52,8 @@ export function SettingForm({
   typ: "tal" | "lista";
   /** Vem som ändrade och när, om värdet avviker från standard. */
   andrad?: { av: string; nar: string };
+  /** Byter värde när inställningen sparas eller återställs, aldrig annars. */
+  version: string;
 }) {
   const [state, action] = useActionState<SettingsState, FormData>(
     updateSetting,
@@ -91,7 +94,7 @@ export function SettingForm({
         {typ === "tal" ? (
           <label className="flex items-center gap-2">
             <input
-              key={String(varde)}
+              key={version}
               name="varde"
               type="number"
               min={1}
@@ -104,7 +107,7 @@ export function SettingForm({
           </label>
         ) : (
           <textarea
-            key={(varde as string[]).join("\n")}
+            key={version}
             name="varde"
             rows={Math.min(Math.max((varde as string[]).length, 3), 10)}
             defaultValue={(varde as string[]).join("\n")}

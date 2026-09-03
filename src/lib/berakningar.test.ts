@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { fromLocalInput, monthsBack, startOfMonthLocal } from "./format";
+import {
+  formatDuration,
+  formatKoordinater,
+  fromLocalInput,
+  listaFranText,
+  monthsBack,
+  parseKoordinater,
+  startOfMonthLocal,
+} from "./format";
 import { addMonths, egetIntyg } from "./certifications";
 import { valjNotiser } from "./notiser";
 import { axelSteg, procentandelar } from "@/components/AdminCharts";
@@ -136,5 +144,60 @@ describe("ingen utfärdar intyg åt sig själv", () => {
     expect(egetIntyg("u1", { kind: "user", id: "u2" }, null)).toBe(false);
     expect(egetIntyg("u1", { kind: "team", id: "t1" }, "u2")).toBe(false);
     expect(egetIntyg("u1", { kind: "dog", id: "d1" }, null)).toBe(false);
+  });
+});
+
+describe("koordinater ur ett textfält", () => {
+  it("läser formatet man kopierar från en karttjänst", () => {
+    expect(parseKoordinater("59.6498, 17.9239")).toEqual({
+      lat: 59.6498,
+      lng: 17.9239,
+    });
+    // Mellanslag i stället för komma, och decimalkomma, förekommer båda.
+    expect(parseKoordinater("59,6498 17,9239")).toEqual({
+      lat: 59.6498,
+      lng: 17.9239,
+    });
+    expect(parseKoordinater("-33.9 18.4")).toEqual({ lat: -33.9, lng: 18.4 });
+  });
+
+  it("skiljer tomt från skräp", () => {
+    // Tomt betyder "ingen karta" och är inte ett fel.
+    expect(parseKoordinater("")).toBeNull();
+    expect(parseKoordinater("   ")).toBeNull();
+    expect(() => parseKoordinater("Arlanda")).toThrow();
+    expect(() => parseKoordinater("59.6498")).toThrow();
+  });
+
+  it("avvisar punkter som inte finns på jorden", () => {
+    expect(() => parseKoordinater("91, 17")).toThrow(/[Ll]atitud/);
+    expect(() => parseKoordinater("59, 181")).toThrow(/[Ll]ongitud/);
+  });
+
+  it("skriver tillbaka värdet så som fältet vill ha det", () => {
+    expect(formatKoordinater(59.6498, 17.9239)).toBe("59.6498, 17.9239");
+    expect(formatKoordinater(null, null)).toBe("");
+    expect(formatKoordinater(59.6498, null)).toBe("");
+  });
+});
+
+describe("utrustningslistan", () => {
+  it("plockar bort tomma rader och mellanslag", () => {
+    expect(listaFranText("Väst\n ID-kort \n\nFicklampa\n")).toEqual([
+      "Väst",
+      "ID-kort",
+      "Ficklampa",
+    ]);
+    expect(listaFranText(null)).toEqual([]);
+    expect(listaFranText("")).toEqual([]);
+  });
+});
+
+describe("beräknad varaktighet", () => {
+  it("skrivs som timmar och minuter", () => {
+    expect(formatDuration(150)).toBe("2 h 30 min");
+    expect(formatDuration(120)).toBe("2 h");
+    expect(formatDuration(45)).toBe("45 min");
+    expect(formatDuration(0)).toBe("–");
   });
 });

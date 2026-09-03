@@ -79,6 +79,17 @@ export default async function PanelSettingsPage() {
     };
   };
 
+  /**
+   * Versionsmärke för fältet, som byter värde när inställningen sparas
+   * eller återställs – men aldrig medan någon skriver. Formuläret använder
+   * det som React-nyckel: fältets defaultValue läses bara vid montering, så
+   * utan nyckeln stod borttagna rader kvar i rutan efter en återställning,
+   * och med en nyckel som följer själva värdet kunde fältet monteras om
+   * mitt i inmatningen.
+   */
+  const version = (nyckel: keyof Settings) =>
+    andrade.get(nyckel)?.updatedAt.toISOString() ?? "standard";
+
   return (
     <AdminShell
       user={admin}
@@ -107,6 +118,7 @@ export default async function PanelSettingsPage() {
             varde={installningar.certWarningDays}
             typ="tal"
             andrad={andradAv("certWarningDays")}
+            version={version("certWarningDays")}
           />
           {(
             [
@@ -124,6 +136,7 @@ export default async function PanelSettingsPage() {
               varde={installningar[nyckel]}
               typ="lista"
               andrad={andradAv(nyckel)}
+              version={version(nyckel)}
             />
           ))}
         </ChartCard>

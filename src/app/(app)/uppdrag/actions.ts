@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan, regionScope, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
-import { fromLocalInput } from "@/lib/format";
+import { fromLocalInput, parseKoordinater } from "@/lib/format";
 import { notify } from "@/lib/notify";
 
 /** Server actions för uppdrag: skapa, tilldela och svara. */
@@ -25,8 +25,51 @@ const missionSchema = z.object({
   locality: z.string().trim().min(1, "Ange ort"),
   regionId: z.string().min(1, "Välj region"),
   disciplineId: z.string().optional(),
+  meetingPoint: z.string().trim().max(200).optional(),
+  parkingInfo: z.string().trim().max(400).optional(),
+  missionArea: z.string().trim().max(200).optional(),
+  equipment: z.string().trim().max(1000).optional(),
+  koordinater: z.string().trim().max(60).optional(),
   specialInstructions: z.string().trim().max(4000).optional(),
 });
+
+/**
+ * Fälten som är gemensamma för att skapa och rätta ett uppdrag. Tid och
+ * koordinater tolkas här, så att båda vägarna behandlar dem likadant.
+ */
+function missionData(data: z.infer<typeof missionSchema>) {
+  const startAt = fromLocalInput(`${data.date}T${data.startTime}`);
+  let endAt = data.endTime
+    ? fromLocalInput(`${data.date}T${data.endTime}`)
+    : null;
+  // Ett nattligt uppdrag slutar efter midnatt, som ett kvällspass.
+  if (endAt && endAt <= startAt) {
+    endAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  const punkt = parseKoordinater(data.koordinater ?? "");
+
+  return {
+    title: data.title,
+    missionType: data.missionType,
+    customerId: data.customerId || null,
+    contactName: data.contactName || null,
+    contactPhone: data.contactPhone || null,
+    startAt,
+    endAt,
+    address: data.address || null,
+    locality: data.locality,
+    meetingPoint: data.meetingPoint || null,
+    parkingInfo: data.parkingInfo || null,
+    missionArea: data.missionArea || null,
+    equipment: data.equipment || null,
+    latitude: punkt?.lat ?? null,
+    longitude: punkt?.lng ?? null,
+    regionId: data.regionId,
+    disciplineId: data.disciplineId || null,
+    specialInstructions: data.specialInstructions || null,
+  };
+}
 
 export type MissionFormState = { error?: string };
 
@@ -86,19 +129,11 @@ export async function createMission(
 
   // Klockslagen läses som svensk tid, precis som formuläret visade dem –
   // annars flyttar sig uppdraget en till två timmar varje gång det sparas.
-  let startAt: Date;
-  let endAt: Date | null = null;
+  let falt: ReturnType<typeof missionData>;
   try {
-    startAt = fromLocalInput(`${data.date}T${data.startTime}`);
-    endAt = data.endTime
-      ? fromLocalInput(`${data.date}T${data.endTime}`)
-      : null;
-  } catch {
-    return { error: "Ogiltigt datum eller klockslag." };
-  }
-  // Ett nattligt uppdrag slutar efter midnatt, som ett kvällspass.
-  if (endAt && endAt <= startAt) {
-    endAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
+    falt = missionData(data);
+  } catch (error) {
+    return { error: (error as Error).message };
   }
 
   // Löpnummer som är läsbart i fält och i rapporter. Numret räknades
@@ -111,18 +146,7 @@ export async function createMission(
     db.mission.create({
       data: {
         reference,
-        title: data.title,
-        missionType: data.missionType,
-        customerId: data.customerId || null,
-        contactName: data.contactName || null,
-        contactPhone: data.contactPhone || null,
-        startAt,
-        endAt,
-        address: data.address || null,
-        locality: data.locality,
-        regionId: data.regionId,
-        disciplineId: data.disciplineId || null,
-        specialInstructions: data.specialInstructions || null,
+        ...falt,
         status: "PLANNED",
         createdById: user.id,
       },
@@ -139,6 +163,120 @@ export async function createMission(
 
   revalidatePath("/uppdrag");
   redirect(`/uppdrag/${mission.id}`);
+}
+
+/**
+ * Rättar ett befintligt uppdrag.
+ *
+ * Referensen står fast – den är uppdragets namn i fält och i rapporter –
+ * och likaså statusen, som styrs av tilldelning och genomförande.
+ */
+export async function updateMission(
+  _prev: MissionFormState,
+  formData: FormData,
+): Promise<MissionFormState> {
+  const user = await requireUser();
+  assertCan(user, "mission:create");
+
+  const missionId = String(formData.get("missionId") ?? "");
+  // Avgränsningen ligger i frågan, och svaret är detsamma vare sig
+  // uppdraget saknas eller ligger utanför behörigheten.
+  const existing = await db.mission.findFirst({
+    where: { id: missionId, ...regionScope(user) },
+    select: { id: true, reference: true },
+  });
+  if (!existing) return { error: "Uppdraget ligger utanför din behörighet." };
+
+  const parsed = missionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Kontrollera uppgifterna." };
+  }
+  const data = parsed.data;
+
+  const scope = regionScope(user);
+  if (scope.regionId && scope.regionId !== data.regionId) {
+    return { error: "Du kan bara flytta uppdrag inom din egen region." };
+  }
+
+  let falt: ReturnType<typeof missionData>;
+  try {
+    falt = missionData(data);
+  } catch (error) {
+    return { error: (error as Error).message };
+  }
+
+  await db.mission.update({ where: { id: existing.id }, data: falt });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Mission",
+    entityId: existing.id,
+    detail: existing.reference,
+  });
+
+  revalidatePath(`/uppdrag/${existing.id}`);
+  revalidatePath(`/uppdrag/${existing.id}/detaljer`);
+  revalidatePath("/uppdrag");
+  redirect(`/uppdrag/${existing.id}`);
+}
+
+/**
+ * Föraren markerar att uppdraget är påbörjat.
+ *
+ * Till skillnad från setMissionStatus, som ledningen använder, får den
+ * här tryckas av den som faktiskt ska ut: kravet är en accepterad
+ * tilldelning inom den egna behörigheten. Starttiden sparas på
+ * tilldelningen och förifyller sedan rapportens "Påbörjat".
+ */
+export async function startMission(formData: FormData) {
+  const user = await requireUser();
+
+  const missionId = String(formData.get("missionId") ?? "");
+  const assignment = await db.missionAssignment.findFirst({
+    where: {
+      missionId,
+      status: "ACCEPTED",
+      team: { AND: [teamScope(user), { handlerId: user.id }] },
+    },
+    include: { mission: { select: { id: true, status: true } } },
+  });
+
+  if (!assignment) {
+    throw new Error("Du är inte tilldelad det här uppdraget.");
+  }
+  if (["COMPLETED", "CANCELLED"].includes(assignment.mission.status)) {
+    throw new Error("Uppdraget är avslutat och kan inte startas.");
+  }
+
+  // Bara första gången: en andra tryckning ska inte flytta starttiden.
+  if (!assignment.startedAt) {
+    await db.missionAssignment.update({
+      where: { id: assignment.id },
+      data: { startedAt: new Date() },
+    });
+  }
+
+  // Framåt, aldrig bakåt.
+  if (["PLANNED", "ASSIGNED"].includes(assignment.mission.status)) {
+    await db.mission.update({
+      where: { id: assignment.mission.id },
+      data: { status: "IN_PROGRESS" },
+    });
+  }
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Mission",
+    entityId: assignment.mission.id,
+    detail: "Uppdrag påbörjat",
+  });
+
+  revalidatePath(`/uppdrag/${missionId}`);
+  revalidatePath(`/uppdrag/${missionId}/detaljer`);
+  revalidatePath("/uppdrag");
+  revalidatePath("/hem");
 }
 
 /** Tilldelar ett ekipage. Ekipaget måste ligga inom tilldelarens behörighet. */

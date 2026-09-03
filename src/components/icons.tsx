@@ -104,6 +104,33 @@ export const PlusIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const MinusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
+export const PhoneIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M7.2 3.8h3l1.3 3.4-1.9 1.4a11.5 11.5 0 0 0 5.8 5.8l1.4-1.9 3.4 1.3v3a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 5.2 6a2 2 0 0 1 2-2.2Z" />
+  </Icon>
+);
+
+export const CarIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4.5 16.5v2.2h2.6v-2.2M16.9 16.5v2.2h2.6v-2.2" />
+    <path d="M3.6 16.5v-4l1.9-4.6a2 2 0 0 1 1.9-1.2h9.2a2 2 0 0 1 1.9 1.2l1.9 4.6v4Z" />
+    <path d="M3.6 12.5h16.8M7 15h1.5M15.5 15H17" />
+  </Icon>
+);
+
+export const RouteIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 21s6.2-6.1 6.2-10.4a6.2 6.2 0 1 0-12.4 0C5.8 14.9 12 21 12 21Z" />
+    <circle cx="12" cy="10.4" r="2.3" />
+  </Icon>
+);
+
 export const FilterIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M3.5 5.5h17l-6.6 7.6v5.3l-3.8 2v-7.3L3.5 5.5Z" />

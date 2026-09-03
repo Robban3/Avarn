@@ -358,6 +358,16 @@ model Mission {
   endAt               DateTime?
   address             String?
   locality            String
+  /** Var ekipaget möter upp, t.ex. "P5, Personalentré". */
+  meetingPoint        String?
+  parkingInfo         String?
+  /** Utrustning och krav, en rad per post – som listorna i inställningarna. */
+  equipment           String?
+  /** Området som ska sökas av, t.ex. "Terminal 5, Bagagehall". */
+  missionArea         String?
+  /** Nålen på kartan. Saknas de visas adresskortet utan karta. */
+  latitude            Float?
+  longitude           Float?
   regionId            String
   region              Region    @relation(fields: [regionId], references: [id])
   disciplineId        String?
@@ -387,6 +397,8 @@ model MissionAssignment {
   status       String    @default("OFFERED") // OFFERED | ACCEPTED | DECLINED | COMPLETED
   note         String?
   respondedAt  DateTime?
+  /** När föraren tryckte "Starta uppdrag" – förifyller rapportens starttid. */
+  startedAt    DateTime?
   createdAt    DateTime  @default(now())
 
   @@unique([missionId, teamId])
@@ -403,9 +415,13 @@ model OperationalReport {
   author       User      @relation("ReportAuthor", fields: [authorId], references: [id])
 
   areasSearched String?
+  /** Ungefärlig yta i kvadratmeter. */
+  areaSize      Int?
   findings      String?
   deviations    String?
   actions       String?
+  /** Förarens fria kommentar om genomförandet. */
+  comment       String?
   startedAt     DateTime?
   endedAt       DateTime?
 

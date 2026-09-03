@@ -158,9 +158,19 @@ test("en ny sökmiljö dyker upp i förarens formulär", async ({ page }) => {
   await loggaIn(page, KONTON.admin);
   await page.goto("/panel/installningar");
 
+  // Hela listan skrivs, inte "det som står plus en rad till": ett prov
+  // som läser, ändrar och skriver tillbaka blir beroende av vad som råkar
+  // stå i rutan, och kan inte köras om.
+  //
+  // Ifyllningen görs om tills värdet sitter kvar. Skrivs det innan sidans
+  // JavaScript hunnit ta över fältet skriver React tillbaka utgångsvärdet
+  // ovanpå – det som händer om man är snabbare än sidladdningen.
+  const NYA_MILJOER = "Skog\nÖppen mark\nHamnområde";
   const ruta = page.getByLabel("Sökmiljöer");
-  const fore = (await ruta.inputValue()).trim();
-  await ruta.fill(`${fore}\nHamnområde`);
+  await expect(async () => {
+    await ruta.fill(NYA_MILJOER);
+    await expect(ruta).toHaveValue(NYA_MILJOER);
+  }).toPass({ timeout: 15_000 });
   await ruta.locator("xpath=ancestor::form").getByRole("button", { name: "Spara" }).click();
   await expect(page.getByText("Sökmiljöer sparad.")).toBeVisible();
 

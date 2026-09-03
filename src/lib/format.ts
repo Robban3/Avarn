@@ -224,3 +224,62 @@ export function monthsBack(count: number, from = new Date()) {
   }
   return months;
 }
+
+/**
+ * Läser koordinater skrivna som "59.6498, 17.9239" – formatet man får när
+ * man kopierar en punkt ur en karttjänst.
+ *
+ * Returnerar null för tomt, och kastar för sådant som ser ut som ett
+ * försök men inte är en punkt på jorden. Skillnaden är avsiktlig: ett tomt
+ * fält betyder "ingen karta", medan skräp ska ge ett felmeddelande.
+ */
+export function parseKoordinater(value: string) {
+  const text = value.trim();
+  if (!text) return null;
+
+  const match = /^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/.exec(text);
+  if (!match) {
+    throw new Error('Koordinater skrivs som "59.6498, 17.9239".');
+  }
+
+  const lat = Number(match[1].replace(",", "."));
+  const lng = Number(match[2].replace(",", "."));
+  if (!Number.isFinite(lat) || Math.abs(lat) > 90) {
+    throw new Error("Latituden måste ligga mellan -90 och 90.");
+  }
+  if (!Number.isFinite(lng) || Math.abs(lng) > 180) {
+    throw new Error("Longituden måste ligga mellan -180 och 180.");
+  }
+  return { lat, lng };
+}
+
+/** "59.6498, 17.9239" – som fältet vill ha det tillbaka. */
+export function formatKoordinater(lat?: number | null, lng?: number | null) {
+  if (lat === null || lat === undefined || lng === null || lng === undefined) {
+    return "";
+  }
+  return `${lat}, ${lng}`;
+}
+
+/**
+ * Raderna i ett flerradigt fält, tomma bortsorterade. Används för
+ * utrustningslistan på uppdraget, på samma sätt som listorna i
+ * inställningarna.
+ */
+export function listaFranText(text?: string | null) {
+  if (!text) return [];
+  return text
+    .split("\n")
+    .map((rad) => rad.trim())
+    .filter(Boolean);
+}
+
+/** "2 h 30 min", "45 min" – beräknad varaktighet ur start och slut. */
+export function formatDuration(minutes: number) {
+  if (minutes <= 0) return "–";
+  const timmar = Math.floor(minutes / 60);
+  const kvar = minutes % 60;
+  if (timmar === 0) return `${kvar} min`;
+  if (kvar === 0) return `${timmar} h`;
+  return `${timmar} h ${kvar} min`;
+}

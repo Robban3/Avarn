@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { assertCan, canEditReport, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
 import { notify, notifyMany } from "@/lib/notify";
-import { isAllowedType, storeUpload } from "@/lib/media";
+import { isAllowedType, removeUpload, storeUpload } from "@/lib/media";
 import { fromLocalInput } from "@/lib/format";
 
 /** Server actions för operativa rapporter. */
@@ -24,9 +24,20 @@ const reportSchema = z.object({
   missionId: z.string().min(1, "Välj uppdrag"),
   teamId: z.string().min(1, "Välj ekipage"),
   areasSearched: z.string().trim().max(4000).optional(),
+  /** Kvadratmeter. Tomt fält betyder att ytan inte uppskattats. */
+  areaSize: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? Number(v.replace(/\s/g, "")) : null))
+    .refine(
+      (v) => v === null || (Number.isFinite(v) && v >= 0 && v <= 10_000_000),
+      "Ytan anges som ett antal kvadratmeter.",
+    ),
   findings: z.string().trim().max(4000).optional(),
   deviations: z.string().trim().max(4000).optional(),
   actions: z.string().trim().max(4000).optional(),
+  comment: z.string().trim().max(4000).optional(),
   startedAt: z.string().optional(),
   endedAt: z.string().optional(),
   submit: z.string().optional(),
@@ -107,7 +118,10 @@ export async function updateReport(
     return { error: "Sluttiden måste vara efter starttiden." };
   }
 
-  const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
+  // Utkast är standardläget: skulle knappens värde av någon anledning
+  // inte följa med sparas rapporten som utkast i stället för att skickas
+  // in i förarens namn. Fel åt det ofarliga hållet.
+  const status = data.submit === "skicka" ? "SUBMITTED" : "DRAFT";
   const indications = parseIndications(formData);
 
   await db.operationalReport.update({
@@ -116,9 +130,11 @@ export async function updateReport(
       missionId: data.missionId,
       teamId: data.teamId,
       areasSearched: data.areasSearched || null,
+      areaSize: data.areaSize,
       findings: data.findings || null,
       deviations: data.deviations || null,
       actions: data.actions || null,
+      comment: data.comment || null,
       startedAt,
       endedAt,
       status,
@@ -262,7 +278,10 @@ export async function createReport(
     return { error: "Sluttiden måste vara efter starttiden." };
   }
 
-  const status = data.submit === "utkast" ? "DRAFT" : "SUBMITTED";
+  // Utkast är standardläget: skulle knappens värde av någon anledning
+  // inte följa med sparas rapporten som utkast i stället för att skickas
+  // in i förarens namn. Fel åt det ofarliga hållet.
+  const status = data.submit === "skicka" ? "SUBMITTED" : "DRAFT";
   const indications = parseIndications(formData);
 
   const report = await db.operationalReport.create({
@@ -271,9 +290,11 @@ export async function createReport(
       teamId: data.teamId,
       authorId: user.id,
       areasSearched: data.areasSearched || null,
+      areaSize: data.areaSize,
       findings: data.findings || null,
       deviations: data.deviations || null,
       actions: data.actions || null,
+      comment: data.comment || null,
       startedAt,
       endedAt,
       status,
@@ -454,4 +475,47 @@ export async function uploadReportMedia(formData: FormData) {
   }
 
   revalidatePath(`/rapporter/${report.id}`);
+  revalidatePath(`/rapporter/${report.id}/redigera`);
+}
+
+/**
+ * Tar bort en bild eller film ur rapporten.
+ *
+ * Filen måste höra till just den rapporten – annars skulle ett främmande
+ * media-id kunna raderas genom att skickas med i formuläret. Samma
+ * redigeringsrätt gäller som för rapporten i övrigt.
+ */
+export async function removeReportMedia(formData: FormData) {
+  const user = await requireUser();
+  const reportId = String(formData.get("reportId") ?? "");
+  const mediaId = String(formData.get("mediaId") ?? "");
+
+  const report = await db.operationalReport.findFirst({
+    where: { id: reportId, team: teamScope(user) },
+    select: { id: true, authorId: true, status: true },
+  });
+  if (!report) throw new Error("Rapporten ligger utanför din behörighet.");
+  if (!canEditReport(user, report)) {
+    throw new Error("Rapporten är godkänd och kan inte längre ändras.");
+  }
+
+  const asset = await db.mediaAsset.findFirst({
+    where: { id: mediaId, reportId: report.id },
+    select: { id: true, storedName: true },
+  });
+  if (!asset) return;
+
+  await db.mediaAsset.delete({ where: { id: asset.id } });
+  await removeUpload(asset.storedName);
+
+  await audit({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "MediaAsset",
+    entityId: asset.id,
+    detail: `Rapport ${report.id}`,
+  });
+
+  revalidatePath(`/rapporter/${report.id}`);
+  revalidatePath(`/rapporter/${report.id}/redigera`);
 }

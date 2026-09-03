@@ -2,39 +2,76 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { createMission, type MissionFormState } from "../actions";
+import {
+  createMission,
+  updateMission,
+  type MissionFormState,
+} from "../actions";
 
 type Option = { id: string; label: string };
 
-function Submit() {
+/** Värdena som ska stå i rutorna när ett befintligt uppdrag rättas. */
+export type MissionDefaults = {
+  date: string;
+  startTime: string;
+  endTime: string;
+  regionId: string;
+  title?: string;
+  missionType?: string;
+  disciplineId?: string;
+  customerId?: string;
+  contactName?: string;
+  contactPhone?: string;
+  address?: string;
+  locality?: string;
+  meetingPoint?: string;
+  parkingInfo?: string;
+  missionArea?: string;
+  equipment?: string;
+  koordinater?: string;
+  specialInstructions?: string;
+};
+
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary w-full" disabled={pending}>
-      {pending ? "Sparar …" : "Lägg upp uppdraget"}
+      {pending ? "Sparar …" : label}
     </button>
   );
 }
 
+/**
+ * Formuläret för att lägga upp ett uppdrag, och för att rätta ett
+ * befintligt. Samma fält i båda fallen – skickas `missionId` med går
+ * inskickningen till updateMission i stället.
+ */
 export function MissionForm({
   regions,
   customers,
   disciplines,
   missionTypes,
   defaults,
+  missionId,
 }: {
   regions: Option[];
   customers: Option[];
   disciplines: Option[];
   missionTypes: string[];
-  defaults: { date: string; startTime: string; endTime: string; regionId: string };
+  defaults: MissionDefaults;
+  missionId?: string;
 }) {
   const [state, action] = useActionState<MissionFormState, FormData>(
-    createMission,
+    missionId ? updateMission : createMission,
     {},
   );
 
   return (
     <form action={action} className="space-y-5">
+      {missionId ? (
+        <input type="hidden" name="missionId" value={missionId} />
+      ) : null}
+
       <fieldset className="card space-y-3.5 p-4">
         <legend className="section-label px-1">Uppdraget</legend>
 
@@ -46,6 +83,7 @@ export function MissionForm({
             id="title"
             name="title"
             required
+            defaultValue={defaults.title}
             placeholder="t.ex. Flygplatskontroll"
             className="field"
           />
@@ -60,7 +98,7 @@ export function MissionForm({
             name="missionType"
             required
             list="missionTypes"
-            defaultValue={missionTypes[0]}
+            defaultValue={defaults.missionType ?? missionTypes[0]}
             className="field"
           />
           <datalist id="missionTypes">
@@ -74,7 +112,12 @@ export function MissionForm({
           <label className="field-label" htmlFor="disciplineId">
             Sökdisciplin
           </label>
-          <select id="disciplineId" name="disciplineId" className="field">
+          <select
+            id="disciplineId"
+            name="disciplineId"
+            defaultValue={defaults.disciplineId ?? ""}
+            className="field"
+          >
             <option value="">Ej angiven</option>
             {disciplines.map((d) => (
               <option key={d.id} value={d.id}>
@@ -137,6 +180,7 @@ export function MissionForm({
           <input
             id="address"
             name="address"
+            defaultValue={defaults.address}
             placeholder="t.ex. Terminal 5, bagagehall"
             className="field"
           />
@@ -150,6 +194,7 @@ export function MissionForm({
             id="locality"
             name="locality"
             required
+            defaultValue={defaults.locality}
             placeholder="t.ex. Arlanda, Stockholm"
             className="field"
           />
@@ -182,7 +227,12 @@ export function MissionForm({
           <label className="field-label" htmlFor="customerId">
             Kund
           </label>
-          <select id="customerId" name="customerId" className="field">
+          <select
+            id="customerId"
+            name="customerId"
+            defaultValue={defaults.customerId ?? ""}
+            className="field"
+          >
             <option value="">Ingen angiven</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -197,7 +247,12 @@ export function MissionForm({
             <label className="field-label" htmlFor="contactName">
               Kontaktperson
             </label>
-            <input id="contactName" name="contactName" className="field" />
+            <input
+              id="contactName"
+              name="contactName"
+              defaultValue={defaults.contactName}
+              className="field"
+            />
           </div>
           <div>
             <label className="field-label" htmlFor="contactPhone">
@@ -207,9 +262,85 @@ export function MissionForm({
               id="contactPhone"
               name="contactPhone"
               type="tel"
+              defaultValue={defaults.contactPhone}
               className="field"
             />
           </div>
+        </div>
+      </fieldset>
+
+      <fieldset className="card space-y-3.5 p-4">
+        <legend className="section-label px-1">På plats</legend>
+
+        <div>
+          <label className="field-label" htmlFor="meetingPoint">
+            Mötesplats
+          </label>
+          <input
+            id="meetingPoint"
+            name="meetingPoint"
+            defaultValue={defaults.meetingPoint}
+            placeholder="t.ex. P5, Personalentré"
+            className="field"
+          />
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="parkingInfo">
+            Parkering
+          </label>
+          <input
+            id="parkingInfo"
+            name="parkingInfo"
+            defaultValue={defaults.parkingInfo}
+            placeholder="t.ex. Parkering P5, passerkort krävs vid bom"
+            className="field"
+          />
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="missionArea">
+            Uppdragsområde
+          </label>
+          <input
+            id="missionArea"
+            name="missionArea"
+            defaultValue={defaults.missionArea}
+            placeholder="t.ex. Terminal 5, Bagagehall"
+            className="field"
+          />
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="koordinater">
+            Koordinater
+          </label>
+          <input
+            id="koordinater"
+            name="koordinater"
+            defaultValue={defaults.koordinater}
+            placeholder="59.6498, 17.9239"
+            className="field"
+          />
+          <p className="mt-1.5 text-xs text-fg-dim">
+            Kopieras från en karttjänst. Lämnas fältet tomt visas adressen
+            utan karta.
+          </p>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="equipment">
+            Utrustning och krav
+          </label>
+          <textarea
+            id="equipment"
+            name="equipment"
+            rows={4}
+            defaultValue={defaults.equipment}
+            placeholder={"Väst\nID-kort\nFicklampa\nVäderkläder"}
+            className="field resize-y"
+          />
+          <p className="mt-1.5 text-xs text-fg-dim">En rad per post.</p>
         </div>
       </fieldset>
 
@@ -223,6 +354,7 @@ export function MissionForm({
             id="specialInstructions"
             name="specialInstructions"
             rows={4}
+            defaultValue={defaults.specialInstructions}
             placeholder="Anmälningsrutin, tillträde, samordning med polis eller kund …"
             className="field resize-y"
           />
@@ -238,11 +370,13 @@ export function MissionForm({
         </p>
       ) : null}
 
-      <Submit />
-      <p className="pb-2 text-center text-xs text-fg-dim">
-        Ekipage tilldelas i nästa steg, med förslag utifrån kompetens,
-        tillgänglighet och region.
-      </p>
+      <Submit label={missionId ? "Spara ändringarna" : "Lägg upp uppdraget"} />
+      {missionId ? null : (
+        <p className="pb-2 text-center text-xs text-fg-dim">
+          Ekipage tilldelas i nästa steg, med förslag utifrån kompetens,
+          tillgänglighet och region.
+        </p>
+      )}
     </form>
   );
 }

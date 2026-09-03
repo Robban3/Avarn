@@ -206,6 +206,26 @@
 }
 
 /* Dölj rullningslist där den skulle störa en horisontell rad */
+/*
+ * Kartan. Leaflet har egen ljus grundfärg och en vit upphovsruta – båda
+ * skär sig mot den mörka ytan, och den ljusa bakgrunden lyser som en vit
+ * platta så länge kartrutorna inte hunnit fram.
+ */
+.leaflet-container {
+  background-color: var(--color-surface-2);
+  font-family: inherit;
+}
+
+.leaflet-control-attribution {
+  background-color: color-mix(in srgb, var(--color-bg-deep) 75%, transparent) !important;
+  color: var(--color-fg-dim) !important;
+  font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-fg-muted) !important;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

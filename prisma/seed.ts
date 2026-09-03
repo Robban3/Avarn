@@ -748,6 +748,13 @@ async function main() {
     durationHours: number;
     address: string;
     locality: string;
+    /** Underlaget till platsvyn. Utelämnas för uppdrag som ligger i historiken. */
+    meetingPoint?: string;
+    parkingInfo?: string;
+    equipment?: string;
+    missionArea?: string;
+    lat?: number;
+    lng?: number;
     regionCode: string;
     disciplineCode: string;
     specialInstructions: string;
@@ -763,6 +770,11 @@ async function main() {
       contactName: "Lars Holmberg", contactPhone: "010-109 00 00",
       dayOffset: 3, startHour: 8, startMin: 0, durationHours: 2,
       address: "Terminal 5, bagagehall", locality: "Arlanda, Stockholm",
+      meetingPoint: "P5, Personalentré",
+      parkingInfo: "Parkering P5. Passerkort krävs vid bom.",
+      equipment: "Väst\nID-kort\nFicklampa\nVäderkläder",
+      missionArea: "Terminal 5, Bagagehall",
+      lat: 59.6498, lng: 17.9239,
       regionCode: "OST", disciplineCode: "SPAR",
       specialInstructions:
         "Anmälan i säkerhetskontrollen senast 07:45. ID-handling och förordnande ska medföras. Sök sker i bagagehall och angränsande lastutrymme.",
@@ -774,6 +786,11 @@ async function main() {
       contactName: "Nina Ek", contactPhone: "08-500 300 00",
       dayOffset: 4, startHour: 14, startMin: 30, durationHours: 3,
       address: "Friends Arena, entré C", locality: "Solna",
+      meetingPoint: "Entré C, vaktkuren",
+      parkingInfo: "Arenagaraget plan 2, avsatta platser för utryckningsfordon.",
+      equipment: "Väst\nID-kort\nFicklampa",
+      missionArea: "Läktarsektion A–D",
+      lat: 59.3729, lng: 18.0009,
       regionCode: "OST", disciplineCode: "YTA",
       specialInstructions:
         "Genomsökning av läktarsektion A–D före publikinsläpp. Klart senast 17:30.",
@@ -785,6 +802,11 @@ async function main() {
       contactName: "Tomas Ek", contactPhone: "08-555 12 00",
       dayOffset: 5, startHour: 10, startMin: 0, durationHours: 4,
       address: "Lagerväg 12", locality: "Jordbro, Haninge",
+      meetingPoint: "Lastkaj 3, receptionen",
+      parkingInfo: "Besöksparkering utanför grind 1.",
+      equipment: "Väst\nID-kort\nSkyddsskor\nHörselskydd",
+      missionArea: "Lagerhall B och lastzon",
+      lat: 59.1447, lng: 18.1247,
       regionCode: "OST", disciplineCode: "GODS",
       specialInstructions: "Samordnas med lagerchef på plats. Truckar stoppas under sök.",
       status: "PLANNED",
@@ -795,6 +817,9 @@ async function main() {
       contactName: "Petra Lund", contactPhone: "018-727 30 00",
       dayOffset: 7, startHour: 9, startMin: 30, durationHours: 3,
       address: "Gränbyvägen 8", locality: "Uppsala",
+      meetingPoint: "Gatan utanför port B",
+      equipment: "Väst\nID-kort\nFicklampa",
+      lat: 59.8767, lng: 17.6656,
       regionCode: "OST", disciplineCode: "SPAR",
       specialInstructions: "Polis närvarar. Invänta klartecken innan sök påbörjas.",
       status: "PLANNED",
@@ -805,6 +830,11 @@ async function main() {
       contactName: "Tomas Ek", contactPhone: "031-555 00 12",
       dayOffset: 6, startHour: 20, startMin: 0, durationHours: 6,
       address: "Skandiahamnen, port 4", locality: "Göteborg",
+      meetingPoint: "Port 4, terminalkontoret",
+      parkingInfo: "Parkering innanför port 4, anmäl fordonet i porten.",
+      equipment: "Väst\nID-kort\nFicklampa\nVäderkläder\nRadio",
+      missionArea: "Kajplan och containerupplag",
+      lat: 57.7089, lng: 11.8874,
       regionCode: "VAST", disciplineCode: "YTA",
       specialInstructions: "Nattpass. Rapportering till larmcentral varannan timme.",
       status: "ASSIGNED", assignTeam: "balder", assignmentStatus: "ACCEPTED",
@@ -856,6 +886,12 @@ async function main() {
         endAt: at(m.dayOffset, m.startHour + m.durationHours, m.startMin),
         address: m.address,
         locality: m.locality,
+        meetingPoint: m.meetingPoint ?? null,
+        parkingInfo: m.parkingInfo ?? null,
+        equipment: m.equipment ?? null,
+        missionArea: m.missionArea ?? null,
+        latitude: m.lat ?? null,
+        longitude: m.lng ?? null,
         regionId: regions[m.regionCode].id,
         disciplineId: disc[m.disciplineCode].id,
         specialInstructions: m.specialInstructions,
@@ -886,9 +922,12 @@ async function main() {
       teamId: teams.nova.id,
       authorId: erik.id,
       areasSearched: "Terminal 5, bagagehall samt angränsande lastutrymme.",
+      areaSize: 25000,
       findings: "1 paket – Narkotika (Cannabis), cirka 400 gram.",
       deviations: "Inga",
       actions: "Överlämnat till polis på plats. Kvitto nummer 41221 erhållet.",
+      comment:
+        "Bra samarbete. Hunden visade tydligt intresse vid bagageband 7. Markering bekräftad av kontrollant.",
       startedAt: at(-10, 8, 0),
       endedAt: at(-10, 10, 20),
       status: "APPROVED",
@@ -922,9 +961,11 @@ async function main() {
       teamId: teams.rex.id,
       authorId: erik.id,
       areasSearched: "Lagerhall A och B, samtliga ställage samt lastkaj.",
+      areaSize: 4200,
       findings: "Inga fynd.",
       deviations: "Port 4 gick inte att öppna, avsnittet kunde inte genomsökas.",
       actions: "Avvikelsen rapporterad till lagerchef Tomas Ek.",
+      comment: "Jämnt arbetstempo genom hela passet. Ny genomsökning av port 4 bokas.",
       startedAt: at(-17, 13, 0),
       endedAt: at(-17, 15, 45),
       status: "APPROVED",
@@ -941,9 +982,11 @@ async function main() {
       teamId: teams.mira.id,
       authorId: sofie.id,
       areasSearched: "Inkommande gods, container 1–14.",
+      areaSize: 1800,
       findings: "1 fynd – misstänkt narkotika i container 9.",
       deviations: "Inga",
       actions: "Godset avskilt och överlämnat till Tullverket.",
+      comment: "Hunden markerade tidigt på container 9. Tullverket på plats inom en timme.",
       startedAt: at(-21, 9, 0),
       endedAt: at(-21, 12, 30),
       status: "SUBMITTED",

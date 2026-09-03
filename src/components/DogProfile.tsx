@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Badge, CardHeader, StatusPill } from "./ui";
+import { Badge, CardHeader, StatusPill, Tabs } from "./ui";
 import { CheckCircleIcon, ChevronRightIcon } from "./icons";
 
 /**
@@ -8,35 +8,12 @@ import { CheckCircleIcon, ChevronRightIcon } from "./icons";
  * används där, men är för många för att trängas i sidan.
  */
 
-/** Flikraden överst på profilen. Fliken hålls i adressen, inte i state. */
-export function ProfileTabs({
-  tabs,
-  active,
-  hrefFor,
-}: {
-  tabs: { value: string; label: string }[];
-  active: string;
-  hrefFor: (value: string) => string;
-}) {
-  return (
-    <div className="no-scrollbar -mx-4 mb-4 flex overflow-x-auto border-b border-line px-4">
-      {tabs.map((tab) => (
-        <Link
-          key={tab.value}
-          href={hrefFor(tab.value)}
-          aria-current={active === tab.value ? "page" : undefined}
-          className={`shrink-0 px-4 pb-2.5 text-center text-[13px] font-semibold uppercase tracking-wide transition-colors ${
-            active === tab.value
-              ? "border-b-2 border-brand text-brand"
-              : "text-fg-dim hover:text-fg-muted"
-          }`}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
+/**
+ * Flikraden överst på profilen. Bor numera i ui.tsx som `Tabs`, eftersom
+ * uppdragsdetaljen använder samma rad – re-exporteras här så att
+ * hundprofilen slipper ändras.
+ */
+export const ProfileTabs = Tabs;
 
 /** Ruta i informationsrutnätet: ikon, etikett och värde. */
 export function InfoTile({
