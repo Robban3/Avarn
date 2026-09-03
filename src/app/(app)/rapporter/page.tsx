@@ -8,6 +8,7 @@ import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { formatShortDate } from "@/lib/format";
 import { REPORT_STATUS_LABELS, reportTone } from "@/lib/domain";
+import { bokstavligt } from "@/lib/fritext";
 import type { Prisma } from "@/generated/prisma";
 
 export const metadata: Metadata = { title: "Rapporter" };
@@ -22,15 +23,17 @@ export default async function ReportsPage({
 
   // Fritextsökningen träffar det man faktiskt letar efter i efterhand:
   // uppdragsnummer, plats, fynd och avvikelser.
+  // Jokertecknen i LIKE görs bokstavliga, annars träffar "%" allt.
+  const fritext = bokstavligt(query);
   const search: Prisma.OperationalReportWhereInput = query
     ? {
         OR: [
-          { mission: { reference: { contains: query } } },
-          { mission: { title: { contains: query } } },
-          { mission: { locality: { contains: query } } },
-          { areasSearched: { contains: query } },
-          { findings: { contains: query } },
-          { deviations: { contains: query } },
+          { mission: { reference: { contains: fritext } } },
+          { mission: { title: { contains: fritext } } },
+          { mission: { locality: { contains: fritext } } },
+          { areasSearched: { contains: fritext } },
+          { findings: { contains: fritext } },
+          { deviations: { contains: fritext } },
         ],
       }
     : {};

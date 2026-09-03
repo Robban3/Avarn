@@ -10,6 +10,21 @@ import { KONTON, loggaIn } from "./hjalp";
  * exempeldatan kan bara köras en gång.
  */
 
+/**
+ * Väntar tills det som tryckts faktiskt kommit fram till servern.
+ *
+ * Knapparna svarar direkt och registreringen går via kön i telefonen, så
+ * skärmen visar det nya värdet innan servern gjort det. Ett prov som
+ * läser serverns bild måste vänta in synkningen; annars läser det
+ * gamla siffror och blir tursamt i stället för tydligt.
+ */
+async function vantaPaSynk(page: import("@playwright/test").Page) {
+  const status = page.getByRole("status").first();
+  await expect(status).not.toHaveAttribute("data-lage", "synkar", {
+    timeout: 20_000,
+  });
+}
+
 const vantaPaUppdrag = (page: import("@playwright/test").Page) =>
   page.waitForURL(
     (url) =>
@@ -97,6 +112,7 @@ test("en markering registreras med ett tryck", async ({ page }) => {
   await expect(fynd).toContainText("1");
 
   // Ett feltryck ska gå att ta bort igen.
+  await vantaPaSynk(page);
   await page.getByRole("button", { name: /^Visa registrerade/ }).click();
   await page
     .getByRole("button", { name: /^Ta bort Fynd/ })
@@ -113,6 +129,7 @@ test("en händelse med text hamnar i listan", async ({ page }) => {
   await page.fill('textarea[name="note"]', "Port 4 gick inte att öppna.");
   await page.getByRole("button", { name: "Registrera", exact: true }).click();
 
+  await vantaPaSynk(page);
   await page.getByRole("button", { name: /^Visa registrerade/ }).click();
   await expect(page.getByText("Port 4 gick inte att öppna.")).toBeVisible();
   await expect(page.getByText("Avvikelse").first()).toBeVisible();
@@ -144,6 +161,7 @@ test("genomsökt andel och checklista räknas upp", async ({ page }) => {
   await expect(page.getByText("2 / 6 klara")).toBeVisible();
 
   // Avbockningen syns också på uppdragets checklistflik.
+  await vantaPaSynk(page);
   const uppdrag = new URL(page.url()).pathname.replace("/pagaende", "");
   await page.goto(`${uppdrag}/detaljer?flik=checklista`);
   await expect(page.getByText("2 av 6 punkter avbockade")).toBeVisible();
@@ -164,6 +182,7 @@ test("avslut ger en sammanställning och en förifylld rapport", async ({
   ).toBeVisible();
 
   // Steg ett: sammanställningen, innan något är avslutat.
+  await vantaPaSynk(page);
   await page.getByRole("button", { name: "Avsluta uppdrag" }).click();
   await expect(page.getByText("Avsluta uppdraget?")).toBeVisible();
   // Sammanställningen räknar upp det som registrerats.

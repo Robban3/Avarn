@@ -84,6 +84,22 @@ test("en grupp går att visa i sin helhet och filtret går att ta bort", async (
   await page.waitForURL(/\/sok\?q=s%C3%B6k$/);
 });
 
+test("jokertecken söks bokstavligt och träffar inte allt", async ({ page }) => {
+  await loggaIn(page, KONTON.hundforare);
+
+  // "%" och "_" är jokertecken i databasens LIKE. Görs de inte
+  // bokstavliga träffar "%" varenda post, och "_o_a" hittar Nova.
+  await page.goto("/sok?q=%25%25");
+  await expect(page.getByText("Inga träffar")).toBeVisible();
+
+  await page.goto("/sok?q=_o_a");
+  await expect(page.getByText("Inga träffar")).toBeVisible();
+
+  // Samma sak i rapportlistans egen sökning.
+  await page.goto("/rapporter?q=%25%25");
+  await expect(page.getByText("Inga träffar")).toBeVisible();
+});
+
 test("en sökning utan träffar säger det rakt ut", async ({ page }) => {
   await loggaIn(page, KONTON.hundforare);
   await page.goto("/sok?q=zzzfinnsinte");

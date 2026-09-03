@@ -336,3 +336,28 @@ describe("minuterPaDygnet", () => {
     expect(minuterPaDygnet(tid("2026-07-15T07:00:00Z"))).toBe(9 * 60);
   });
 });
+
+describe("timfonster och otillgänglighet", () => {
+  const dagar = veckans("2026-09-24");
+
+  it("låter inte ett dygnslångt block spränga fönstret", () => {
+    // Otillgänglighet sätts i hela dygn. Räknades den in blev fönstret
+    // midnatt–midnatt, och veckans uppdrag klämdes ihop till streck.
+    const semester = handelse({
+      id: "s",
+      slag: "otillganglig",
+      start: tid("2026-09-21T00:00:00Z"),
+      slut: tid("2026-09-28T00:00:00Z"),
+    });
+    expect(timfonster([semester], dagar)).toEqual({ fran: 6, till: 19 });
+  });
+
+  it("men ett uppdrag utanför arbetsdagen vidgar det fortfarande", () => {
+    const sent = handelse({
+      id: "u",
+      start: tid("2026-09-24T19:00:00Z"),
+      slut: tid("2026-09-24T21:00:00Z"),
+    });
+    expect(timfonster([sent], dagar)).toEqual({ fran: 6, till: 23 });
+  });
+});

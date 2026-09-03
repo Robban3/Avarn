@@ -16,7 +16,9 @@ import {
   laggIKo,
   prenumereraKo,
   serverKoLangd,
+  raknaForsok,
   taBortUrKo,
+  MAX_FORSOK,
   type Kotyp,
 } from "@/lib/offlineko";
 import {
@@ -112,9 +114,15 @@ export function Offlinestatus() {
           if (post.typ === "framdrift") await setMissionProgress(data);
           if (post.id !== undefined) await taBortUrKo(post.id);
         } catch {
-          // Kommer den inte fram får den ligga kvar och prövas igen.
-          // En registrering ska aldrig försvinna för att nätet svajade.
-          break;
+          // Kommer den inte fram får den ligga kvar och prövas igen. En
+          // registrering ska aldrig försvinna för att nätet svajade.
+          //
+          // Men den får inte stå i vägen för resten heller. Misslyckas
+          // den flera gånger i rad är det inte nätet det hänger på, och
+          // då hoppas den över så att det som ligger bakom kommer fram.
+          // Posten ligger kvar och räknas fortfarande.
+          if (post.id !== undefined) await raknaForsok(post.id);
+          if ((post.forsok ?? 0) + 1 < MAX_FORSOK) break;
         }
       }
       // Servern har fått registreringarna, men sidan visar fortfarande
@@ -263,10 +271,15 @@ export function Kobartformular({
  * tillstånd som följer en propp.
  */
 function useEgetVarde<T>(franServern: T, likhet: (a: T, b: T) => boolean) {
+  const kolangd = useKolangd();
   const [eget, setEget] = useState(franServern);
   const [sett, setSett] = useState(franServern);
 
-  if (!likhet(franServern, sett)) {
+  // Ligger det kvar oskickade tryck i kön är serverns värde äldre än
+  // förarens. Två snabba tryck köar två poster; när den första kommit
+  // fram ritas sidan om med det värdet, och utan spärren hade det
+  // hoppat tillbaka ett steg innan den andra hann fram.
+  if (kolangd === 0 && !likhet(franServern, sett)) {
     setSett(franServern);
     setEget(franServern);
   }

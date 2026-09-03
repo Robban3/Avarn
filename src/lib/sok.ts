@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma";
 import { db } from "./db";
 import { can, regionScope, teamScope } from "./authz";
+import { bokstavligt } from "./fritext";
 import type { SessionUser } from "./session";
 
 /**
@@ -32,7 +33,7 @@ export const PER_GRUPP = 3;
 
 /** Fritext som ett Prisma-villkor, oberoende av versaler. */
 const som = (fritext: string) => ({
-  contains: fritext,
+  contains: bokstavligt(fritext),
   mode: "insensitive" as const,
 });
 

@@ -174,6 +174,11 @@ export function spalter(handelser: Handelse[], dag: string): Spalt[] {
  * Fönstret utgår från en arbetsdag och växer bara när något faktiskt
  * ligger utanför – ett uppdrag klockan 22 ska synas, men ett dygn på
  * höjden gör alla andra block för låga för att läsa.
+ *
+ * Satt otillgänglighet räknas inte in. Den sätts i hela dygn, och ett
+ * enda sådant block hade dragit ut fönstret till midnatt–midnatt och
+ * klämt ihop veckans uppdrag till streck. Blocket ritas ändå, klippt
+ * vid fönstrets kanter.
  */
 export function timfonster(
   handelser: Handelse[],
@@ -184,6 +189,7 @@ export function timfonster(
   let till = minsta.till;
   for (const dag of dagar) {
     for (const h of handelser) {
+      if (h.slag === "otillganglig") continue;
       if (dateKey(h.start) > dag || dateKey(slutTid(h)) < dag) continue;
       const intervall = dagsintervall(h, dag);
       fran = Math.min(fran, Math.floor(intervall.fran / 60));

@@ -28,7 +28,17 @@ export type Kopost = {
   /** Formulärets fält, som de såg ut när föraren tryckte. */
   falt: [string, string][];
   skapad: number;
+  /** Antal misslyckade försök att skicka posten. */
+  forsok?: number;
 };
+
+/**
+ * Så många gånger en post får misslyckas innan den hoppas över.
+ *
+ * Går den inte igenom så många gånger i rad är det inte nätet det
+ * hänger på, och då ska den inte hålla kvar allt som ligger bakom.
+ */
+export const MAX_FORSOK = 5;
 
 /** Antalet köade poster, som en synkron ögonblicksbild. */
 let langd = 0;
@@ -85,6 +95,17 @@ export async function hamtaKo(): Promise<Kopost[]> {
   );
   // Äldst först: registreringarna ska komma fram i den ordning de gjordes.
   return poster.sort((a, b) => a.skapad - b.skapad);
+}
+
+/** Räknar upp misslyckade försök på en post. */
+export async function raknaForsok(id: number) {
+  const post = await medButik<Kopost | undefined>("readonly", (butik) =>
+    butik.get(id),
+  );
+  if (!post) return;
+  await medButik("readwrite", (butik) =>
+    butik.put({ ...post, forsok: (post.forsok ?? 0) + 1 }),
+  );
 }
 
 export async function taBortUrKo(id: number) {
