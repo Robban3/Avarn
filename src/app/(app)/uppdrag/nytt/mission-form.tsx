@@ -29,6 +29,10 @@ export type MissionDefaults = {
   missionArea?: string;
   equipment?: string;
   koordinater?: string;
+  motesKoordinater?: string;
+  parkeringsKoordinater?: string;
+  omradesKoordinater?: string;
+  ytaKvm?: string;
   specialInstructions?: string;
 };
 
@@ -325,6 +329,72 @@ export function MissionForm({
           <p className="mt-1.5 text-xs text-fg-dim">
             Kopieras från en karttjänst. Lämnas fältet tomt visas adressen
             utan karta.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="field-label" htmlFor="motesKoordinater">
+              Mötesplatsens koordinater
+            </label>
+            <input
+              id="motesKoordinater"
+              name="motesKoordinater"
+              defaultValue={defaults.motesKoordinater}
+              placeholder="59.6501, 17.9250"
+              className="field"
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="parkeringsKoordinater">
+              Parkeringens koordinater
+            </label>
+            <input
+              id="parkeringsKoordinater"
+              name="parkeringsKoordinater"
+              defaultValue={defaults.parkeringsKoordinater}
+              placeholder="59.6510, 17.9210"
+              className="field"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="ytaKvm">
+            Yta (ca)
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="ytaKvm"
+              name="ytaKvm"
+              type="number"
+              min={0}
+              max={10000000}
+              inputMode="numeric"
+              defaultValue={defaults.ytaKvm}
+              placeholder="25000"
+              className="field"
+            />
+            <span className="shrink-0 text-sm text-fg-muted">m²</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="omradesKoordinater">
+            Uppdragsområdets hörn
+          </label>
+          <textarea
+            id="omradesKoordinater"
+            name="omradesKoordinater"
+            rows={4}
+            defaultValue={defaults.omradesKoordinater}
+            placeholder={"59.6510, 17.9200\n59.6512, 17.9280\n59.6480, 17.9275"}
+            className="field resize-y font-mono text-[12px]"
+          />
+          <p className="mt-1.5 text-xs text-fg-dim">
+            En koordinat per rad, minst tre. Ritas som en yta på kartan.
+            Lämnas det tomt men ytan är ifylld ritas en cirkel av rätt
+            storlek i stället, märkt som ungefärlig.
           </p>
         </div>
 

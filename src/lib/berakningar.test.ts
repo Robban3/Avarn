@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   formatDuration,
   formatKoordinater,
+  formatKoordinatlista,
+  formatStopwatch,
   fromLocalInput,
   listaFranText,
   monthsBack,
   parseKoordinater,
+  parseKoordinatlista,
   startOfMonthLocal,
 } from "./format";
 import { addMonths, egetIntyg } from "./certifications";
@@ -255,5 +258,57 @@ describe("varaktighet vid noll", () => {
     // en varaktighet, och timern skriver därför ut den själv.
     expect(formatDuration(0)).toBe("–");
     expect(formatDuration(1)).toBe("1 min");
+  });
+});
+
+describe("uppdragsområdets hörn", () => {
+  it("läser en koordinat per rad", () => {
+    expect(
+      parseKoordinatlista("59.6510, 17.9210\n59.6512, 17.9268\n59.6488, 17.9280"),
+    ).toEqual([
+      { lat: 59.651, lng: 17.921 },
+      { lat: 59.6512, lng: 17.9268 },
+      { lat: 59.6488, lng: 17.928 },
+    ]);
+  });
+
+  it("ger en tom lista för tomt fält", () => {
+    expect(parseKoordinatlista("")).toEqual([]);
+    expect(parseKoordinatlista(null)).toEqual([]);
+  });
+
+  it("pekar ut vilken rad som är fel", () => {
+    // Utan radnumret får den som klistrat in fel bara en karta utan yta
+    // och ingen förklaring.
+    expect(() =>
+      parseKoordinatlista("59.65, 17.92\nArlanda\n59.64, 17.93"),
+    ).toThrow(/Rad 2/);
+  });
+
+  it("skriver tillbaka listan som fältet vill ha den", () => {
+    const punkter = [
+      { lat: 59.651, lng: 17.921 },
+      { lat: 59.6512, lng: 17.9268 },
+    ];
+    expect(formatKoordinatlista(punkter)).toBe(
+      "59.651, 17.921\n59.6512, 17.9268",
+    );
+    expect(parseKoordinatlista(formatKoordinatlista(punkter))).toEqual(punkter);
+  });
+});
+
+describe("uppdragstiden som klocka", () => {
+  it("har samma bredd hela tiden", () => {
+    expect(formatStopwatch(0)).toBe("00:00:00");
+    expect(formatStopwatch(7_000)).toBe("00:00:07");
+    expect(formatStopwatch(42 * 60_000 + 18_000)).toBe("00:42:18");
+    expect(formatStopwatch(3 * 3_600_000 + 5 * 60_000 + 9_000)).toBe(
+      "03:05:09",
+    );
+  });
+
+  it("går inte bakåt om klockorna skiljer sig", () => {
+    // Serverns och telefonens klockor kan gå isär med någon sekund.
+    expect(formatStopwatch(-5_000)).toBe("00:00:00");
   });
 });

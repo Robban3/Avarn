@@ -283,3 +283,47 @@ export function formatDuration(minutes: number) {
   if (kvar === 0) return `${timmar} h`;
   return `${timmar} h ${kvar} min`;
 }
+
+/**
+ * Läser flera koordinater, en per rad – uppdragsområdets hörn.
+ *
+ * Tomt ger en tom lista. Skräp kastar, med raden utpekad, så att den som
+ * klistrat in fel ser var det gick fel i stället för att få en karta utan
+ * yta och ingen förklaring.
+ */
+export function parseKoordinatlista(value?: string | null) {
+  const rader = listaFranText(value);
+  return rader.map((rad, i) => {
+    try {
+      const punkt = parseKoordinater(rad);
+      if (!punkt) throw new Error("Tom rad.");
+      return punkt;
+    } catch (error) {
+      throw new Error(`Rad ${i + 1}: ${(error as Error).message}`);
+    }
+  });
+}
+
+/** "59.6498, 17.9239" per rad, som fältet vill ha det tillbaka. */
+export function formatKoordinatlista(
+  punkter: { lat: number; lng: number }[],
+) {
+  return punkter.map((p) => `${p.lat}, ${p.lng}`).join("\n");
+}
+
+/**
+ * Uppdragstid som klocka: "00:42:18".
+ *
+ * Skiljer sig från formatDuration, som skriver varaktigheter i löpande
+ * text. En klocka som räknar under ett pågående uppdrag ska ha samma
+ * bredd hela tiden och gå att läsa i ögonvrån.
+ */
+export function formatStopwatch(millisekunder: number) {
+  const totalt = Math.max(0, Math.floor(millisekunder / 1000));
+  const timmar = Math.floor(totalt / 3600);
+  const minuter = Math.floor((totalt % 3600) / 60);
+  const sekunder = totalt % 60;
+  return [timmar, minuter, sekunder]
+    .map((v) => String(v).padStart(2, "0"))
+    .join(":");
+}

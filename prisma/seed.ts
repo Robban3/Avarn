@@ -755,6 +755,13 @@ async function main() {
     missionArea?: string;
     lat?: number;
     lng?: number;
+    motesLat?: number;
+    motesLng?: number;
+    parkeringLat?: number;
+    parkeringLng?: number;
+    ytaKvm?: number;
+    /** Uppdragsområdets hörn, en koordinat per rad. */
+    omrade?: string;
     regionCode: string;
     disciplineCode: string;
     specialInstructions: string;
@@ -775,6 +782,16 @@ async function main() {
       equipment: "Väst\nID-kort\nFicklampa\nVäderkläder",
       missionArea: "Terminal 5, Bagagehall",
       lat: 59.6498, lng: 17.9239,
+      motesLat: 59.6505, motesLng: 17.9256,
+      parkeringLat: 59.6512, parkeringLng: 17.9220,
+      ytaKvm: 25000,
+      omrade: [
+        "59.6510, 17.9210",
+        "59.6512, 17.9268",
+        "59.6488, 17.9280",
+        "59.6480, 17.9236",
+        "59.6493, 17.9202",
+      ].join("\n"),
       regionCode: "OST", disciplineCode: "SPAR",
       specialInstructions:
         "Anmälan i säkerhetskontrollen senast 07:45. ID-handling och förordnande ska medföras. Sök sker i bagagehall och angränsande lastutrymme.",
@@ -835,6 +852,7 @@ async function main() {
       equipment: "Väst\nID-kort\nFicklampa\nVäderkläder\nRadio",
       missionArea: "Kajplan och containerupplag",
       lat: 57.7089, lng: 11.8874,
+      ytaKvm: 40000,
       regionCode: "VAST", disciplineCode: "YTA",
       specialInstructions: "Nattpass. Rapportering till larmcentral varannan timme.",
       status: "ASSIGNED", assignTeam: "balder", assignmentStatus: "ACCEPTED",
@@ -892,6 +910,12 @@ async function main() {
         missionArea: m.missionArea ?? null,
         latitude: m.lat ?? null,
         longitude: m.lng ?? null,
+        meetingLat: m.motesLat ?? null,
+        meetingLng: m.motesLng ?? null,
+        parkingLat: m.parkeringLat ?? null,
+        parkingLng: m.parkeringLng ?? null,
+        areaSizeSqm: m.ytaKvm ?? null,
+        areaPolygon: m.omrade ?? null,
         regionId: regions[m.regionCode].id,
         disciplineId: disc[m.disciplineCode].id,
         specialInstructions: m.specialInstructions,

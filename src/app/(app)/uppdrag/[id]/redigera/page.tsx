@@ -81,6 +81,17 @@ export default async function EditMissionPage({
           missionArea: mission.missionArea ?? "",
           equipment: mission.equipment ?? "",
           koordinater: formatKoordinater(mission.latitude, mission.longitude),
+          motesKoordinater: formatKoordinater(
+            mission.meetingLat,
+            mission.meetingLng,
+          ),
+          parkeringsKoordinater: formatKoordinater(
+            mission.parkingLat,
+            mission.parkingLng,
+          ),
+          omradesKoordinater: mission.areaPolygon ?? "",
+          ytaKvm:
+            mission.areaSizeSqm === null ? "" : String(mission.areaSizeSqm),
           specialInstructions: mission.specialInstructions ?? "",
         }}
       />

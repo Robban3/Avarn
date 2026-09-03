@@ -366,9 +366,22 @@ model Mission {
   equipment           String?
   /** Området som ska sökas av, t.ex. "Terminal 5, Bagagehall". */
   missionArea         String?
+  /** Ungefärlig yta i kvadratmeter. */
+  areaSizeSqm         Int?
+  /**
+   * Uppdragsområdets hörn, en koordinat per rad. Ritas som en yta på
+   * kartan. Saknas den men ytan är känd ritas en cirkel av rätt storlek
+   * kring uppdragets koordinat i stället – ungefärlig, och märkt så.
+   */
+  areaPolygon         String?
   /** Nålen på kartan. Saknas de visas adresskortet utan karta. */
   latitude            Float?
   longitude           Float?
+  /** Egna nålar för mötesplats och parkering, när de är kända. */
+  meetingLat          Float?
+  meetingLng          Float?
+  parkingLat          Float?
+  parkingLng          Float?
   regionId            String
   region              Region    @relation(fields: [regionId], references: [id])
   disciplineId        String?

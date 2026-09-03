@@ -124,6 +124,34 @@ export const CarIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const TargetIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="3.2" />
+    <circle cx="12" cy="12" r="7.5" />
+    <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" />
+  </Icon>
+);
+
+export const FlagIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 21V4" />
+    <path d="M6 4.5h11l-2.2 3.6L17 11.7H6" />
+  </Icon>
+);
+
+export const StopwatchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="13.5" r="7.5" />
+    <path d="M12 10v3.5l2.3 1.6M9.5 2.5h5M12 2.5V6M18.8 7.4l1.4-1.4" />
+  </Icon>
+);
+
+export const StopIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+  </Icon>
+);
+
 export const RouteIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 21s6.2-6.1 6.2-10.4a6.2 6.2 0 1 0-12.4 0C5.8 14.9 12 21 12 21Z" />

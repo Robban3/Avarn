@@ -20,6 +20,8 @@ type AppShellProps = {
   branded?: boolean;
   /** Visas som bakåtpil i stället för menyknapp. */
   backHref?: string;
+  /** Rad under rubriken, t.ex. "Uppdrag pågår". */
+  subtitle?: ReactNode;
   /**
    * Döljer menyknappen så att logotypen börjar vid vänsterkanten. "Mer"
    * finns kvar i flikraden längst ner, så inget blir oåtkomligt.
@@ -37,6 +39,7 @@ type AppShellProps = {
 
 export function AppShell({
   title,
+  subtitle,
   branded = false,
   backHref,
   menu = true,
@@ -50,7 +53,7 @@ export function AppShell({
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="sticky top-0 z-30 border-b border-line-soft bg-bg/95 backdrop-blur supports-[backdrop-filter]:bg-bg/80">
         <div
-          className={`mx-auto flex h-14 w-full items-center gap-2 px-4 ${
+          className={`mx-auto flex min-h-14 w-full items-center gap-2 px-4 py-2 ${
             wide ? "max-w-5xl" : "max-w-4xl"
           }`}
         >
@@ -88,9 +91,16 @@ export function AppShell({
               ) : null}
             </div>
           ) : title ? (
-            <h1 className="flex-1 truncate text-center text-[13px] font-semibold uppercase tracking-[0.12em] text-fg">
-              {title}
-            </h1>
+            <div className="min-w-0 flex-1 text-center">
+              <h1 className="truncate text-[13px] font-semibold uppercase tracking-[0.12em] text-fg">
+                {title}
+              </h1>
+              {subtitle ? (
+                <p className="mt-0.5 truncate text-[11px] text-fg-muted">
+                  {subtitle}
+                </p>
+              ) : null}
+            </div>
           ) : (
             <span className="flex-1" />
           )}

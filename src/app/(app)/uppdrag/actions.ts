@@ -7,7 +7,13 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan, regionScope, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
-import { fromLocalInput, listaFranText, parseKoordinater } from "@/lib/format";
+import {
+  formatKoordinatlista,
+  fromLocalInput,
+  listaFranText,
+  parseKoordinater,
+  parseKoordinatlista,
+} from "@/lib/format";
 import { EVENT_KINDS, type EventKind } from "@/lib/domain";
 import type { SessionUser } from "@/lib/session";
 import { notify } from "@/lib/notify";
@@ -32,6 +38,18 @@ const missionSchema = z.object({
   missionArea: z.string().trim().max(200).optional(),
   equipment: z.string().trim().max(1000).optional(),
   koordinater: z.string().trim().max(60).optional(),
+  motesKoordinater: z.string().trim().max(60).optional(),
+  parkeringsKoordinater: z.string().trim().max(60).optional(),
+  omradesKoordinater: z.string().trim().max(2000).optional(),
+  ytaKvm: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? Number(v.replace(/\s/g, "")) : null))
+    .refine(
+      (v) => v === null || (Number.isFinite(v) && v >= 0 && v <= 10_000_000),
+      "Ytan anges som ett antal kvadratmeter.",
+    ),
   specialInstructions: z.string().trim().max(4000).optional(),
 });
 
@@ -50,6 +68,14 @@ function missionData(data: z.infer<typeof missionSchema>) {
   }
 
   const punkt = parseKoordinater(data.koordinater ?? "");
+  const motet = parseKoordinater(data.motesKoordinater ?? "");
+  const parkeringen = parseKoordinater(data.parkeringsKoordinater ?? "");
+  // Kastar med radnumret utpekat om någon rad är fel, så att felet går
+  // att rätta i stället för att ytan tyst uteblir.
+  const omrade = parseKoordinatlista(data.omradesKoordinater);
+  if (omrade.length > 0 && omrade.length < 3) {
+    throw new Error("Ett uppdragsområde behöver minst tre hörn.");
+  }
 
   return {
     title: data.title,
@@ -67,6 +93,12 @@ function missionData(data: z.infer<typeof missionSchema>) {
     equipment: data.equipment || null,
     latitude: punkt?.lat ?? null,
     longitude: punkt?.lng ?? null,
+    meetingLat: motet?.lat ?? null,
+    meetingLng: motet?.lng ?? null,
+    parkingLat: parkeringen?.lat ?? null,
+    parkingLng: parkeringen?.lng ?? null,
+    areaSizeSqm: data.ytaKvm,
+    areaPolygon: omrade.length >= 3 ? formatKoordinatlista(omrade) : null,
     regionId: data.regionId,
     disciplineId: data.disciplineId || null,
     specialInstructions: data.specialInstructions || null,
