@@ -148,9 +148,14 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="card flex items-center gap-3 px-4 py-3 sm:w-56">
+        {/* Dagens datum är kalenderns ingång från startsidan – kortet visar
+            redan dagen, och en egen genväg till samma sak vore en till. */}
+        <Link
+          href="/kalender"
+          className="card flex items-center gap-3 px-4 py-3 transition-colors hover:border-surface-3 hover:bg-surface-2 sm:w-56"
+        >
           <CalendarIcon className="h-6 w-6 shrink-0 text-fg-dim" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-fg-dim">
               Idag
             </p>
@@ -161,7 +166,8 @@ export default async function HomePage() {
               {formatWeekday(today)}
             </p>
           </div>
-        </div>
+          <ChevronRightIcon className="h-[18px] w-[18px] shrink-0 text-fg-dim" />
+        </Link>
       </section>
 
       {/* 2. Snabbgenvägar */}

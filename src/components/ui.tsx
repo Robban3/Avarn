@@ -156,10 +156,27 @@ export function Badge({
   );
 }
 
-/** Liten versal tagg för sökdisciplin, t.ex. "SÖK – SPÅR". */
-export function DisciplineTag({ label }: { label: string }) {
+/**
+ * Liten versal tagg för sökdisciplin, t.ex. "SÖK – SPÅR".
+ *
+ * Kalendern använder samma tagg i blått för träningspass, så att en rad
+ * går att skilja på slag utan att listan behöver två radmönster.
+ */
+export function DisciplineTag({
+  label,
+  tone = "brand",
+}: {
+  label: string;
+  tone?: "brand" | "info";
+}) {
   return (
-    <span className="whitespace-nowrap rounded border border-brand/25 bg-brand/10 px-1.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-brand">
+    <span
+      className={`whitespace-nowrap rounded px-1.5 py-1 text-[10px] font-bold uppercase leading-none tracking-[0.06em] ${
+        tone === "info"
+          ? "border border-info/25 bg-info/10 text-info"
+          : "border border-brand/25 bg-brand/10 text-brand"
+      }`}
+    >
       {label}
     </span>
   );

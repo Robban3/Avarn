@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, PageHeading, SectionHeader } from "@/components/ui";
 import {
+  CalendarIcon,
   CertificateIcon,
   ChartIcon,
   ChevronRightIcon,
@@ -29,6 +30,12 @@ export default async function MorePage() {
   const user = { role, id: record.id, regionId: record.regionId };
 
   const items = [
+    {
+      href: "/kalender",
+      label: "Kalender",
+      Icon: CalendarIcon,
+      show: true,
+    },
     {
       href: "/certifikat",
       label: "Certifikat och behörigheter",

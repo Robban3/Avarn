@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { can, regionScope, teamScope } from "./authz";
+import type { Handelse } from "./kalender";
 import type { SessionUser } from "./session";
 import { getSettings } from "./settings";
 
@@ -135,6 +136,92 @@ export async function missionForUser(user: SessionUser, id: string) {
       },
     },
   });
+}
+
+/**
+ * Allt som ska ritas i kalendern mellan två tidpunkter: uppdrag,
+ * träningspass och satt otillgänglighet.
+ *
+ * Avgränsningen är densamma som i respektive modul. Uppdragen följer
+ * `missionForUser`: den som tilldelar uppdrag ser sin regions uppdrag,
+ * övriga bara dem deras egna ekipage är tilldelade. Träning och
+ * tillgänglighet går alltid genom `teamScope`.
+ */
+export async function kalenderhandelser(
+  user: SessionUser,
+  fran: Date,
+  till: Date,
+) {
+  const scope = teamScope(user);
+
+  const [missions, sessions, availability] = await Promise.all([
+    db.mission.findMany({
+      where: {
+        AND: [
+          { startAt: { gte: fran, lt: till } },
+          { status: { notIn: ["CANCELLED"] } },
+          can(user, "mission:assign")
+            ? regionScope(user)
+            : { assignments: { some: { team: scope } } },
+        ],
+      },
+      include: { discipline: true },
+      orderBy: { startAt: "asc" },
+    }),
+    db.trainingSession.findMany({
+      where: { AND: [{ startAt: { gte: fran, lt: till } }, { team: scope }] },
+      include: { team: { include: { dog: true } }, discipline: true },
+      orderBy: { startAt: "asc" },
+    }),
+    // Ett tillgänglighetsblock räknas som synligt så snart det överlappar
+    // fönstret, inte bara när det börjar i det – annars försvinner en
+    // vecka av semester ur alla veckor utom den första.
+    db.teamAvailability.findMany({
+      where: {
+        AND: [{ startAt: { lt: till }, endAt: { gt: fran } }, { team: scope }],
+      },
+      include: { team: { include: { dog: true } } },
+      orderBy: { startAt: "asc" },
+    }),
+  ]);
+
+  const handelser: Handelse[] = [
+    ...missions.map((m) => ({
+      id: `uppdrag-${m.id}`,
+      slag: "uppdrag" as const,
+      rubrik: m.title,
+      ort: m.locality,
+      start: m.startAt,
+      slut: m.endAt,
+      tagg: m.discipline?.shortLabel ?? null,
+      href: `/uppdrag/${m.id}`,
+    })),
+    ...sessions.map((s) => ({
+      id: `traning-${s.id}`,
+      slag: "traning" as const,
+      rubrik: `${s.trainingArea} – ${s.team.dog.name}`,
+      ort: s.location,
+      start: s.startAt,
+      slut: s.endAt,
+      tagg: "Träning",
+      href: `/traning/${s.id}`,
+    })),
+    ...availability
+      .filter((a) => a.kind === "UNAVAILABLE")
+      .map((a) => ({
+        id: `otillganglig-${a.id}`,
+        slag: "otillganglig" as const,
+        rubrik: "Otillgänglig",
+        ort: a.note ?? a.team.dog.name,
+        start: a.startAt,
+        slut: a.endAt,
+        tagg: null,
+        // Tillgängligheten sätts i profilen; blocket leder dit den ändras.
+        href: "/profil",
+      })),
+  ];
+
+  return handelser;
 }
 
 /** Ekipagen i uppdraget som användaren själv är förare för. */

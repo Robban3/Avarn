@@ -76,6 +76,79 @@ export function toLocalInput(date: Date) {
  */
 export const dateKey = (d: Date) => toLocalInput(d).slice(0, 10);
 
+/* ------------------------------------------------------- Datum som nyckel */
+
+/**
+ * Räkning på kalenderdygn görs på nycklar ("2026-09-24") och inte på
+ * tidpunkter. Ett dygn är inte alltid 24 timmar – natten mot sista söndagen
+ * i mars är 23 – så "lägg till ett dygn" på en tidpunkt hoppar fel två gånger
+ * om året. Nyckeln har ingen klocka och kan räknas i UTC utan att någon
+ * omställning stör.
+ */
+const nyckelSomUtc = (nyckel: string) => Date.parse(`${nyckel}T00:00:00Z`);
+
+/** Datumet `antal` dygn senare, som nyckel. Negativt går bakåt. */
+export function addDaysKey(nyckel: string, antal: number) {
+  return new Date(nyckelSomUtc(nyckel) + antal * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/** Veckodagen för en nyckel, med måndag som 0 – som en svensk kalender. */
+export function weekdayIndex(nyckel: string) {
+  return (new Date(nyckelSomUtc(nyckel)).getUTCDay() + 6) % 7;
+}
+
+/** Måndagen i veckan som nyckeln ligger i. */
+export function startOfWeekKey(nyckel: string) {
+  return addDaysKey(nyckel, -weekdayIndex(nyckel));
+}
+
+/**
+ * ISO-veckonumret. Veckan hör till det år dess torsdag ligger i, och
+ * vecka 1 är den som innehåller årets första torsdag – därför räcker det
+ * att räkna hela veckor från nyårsdagen fram till veckans torsdag.
+ */
+export function isoWeek(nyckel: string) {
+  const torsdag = addDaysKey(startOfWeekKey(nyckel), 3);
+  const nyarsdag = Date.UTC(Number(torsdag.slice(0, 4)), 0, 1);
+  const dygn = (nyckelSomUtc(torsdag) - nyarsdag) / 86_400_000;
+  return Math.floor(dygn / 7) + 1;
+}
+
+/** Nyckeln som en tidpunkt mitt på dagen – aldrig nära en dygnsgräns. */
+const nyckelSomDatum = (nyckel: string) => fromLocalInput(`${nyckel}T12:00`);
+
+const manadArFmt = new Intl.DateTimeFormat("sv-SE", {
+  month: "long",
+  year: "numeric",
+  timeZone: TZ,
+});
+
+const dagRubrikFmt = new Intl.DateTimeFormat("sv-SE", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: TZ,
+});
+
+/** "September 2026" – rubriken över månadsrutnätet. */
+export function formatMonthYear(nyckel: string) {
+  const text = manadArFmt.format(nyckelSomDatum(nyckel));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "Torsdag 24 september" – rubriken över dagens lista. */
+export function formatDayHeading(nyckel: string) {
+  const text = dagRubrikFmt.format(nyckelSomDatum(nyckel));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Tidpunkten då dygnet börjar i svensk tid. */
+export const startOfDay = (nyckel: string) => fromLocalInput(`${nyckel}T00:00`);
+
+/* -------------------------------------------------------------------------- */
+
 /** Hur långt före eller efter UTC svensk tid låg vid en viss tidpunkt. */
 function offsetMs(instant: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
