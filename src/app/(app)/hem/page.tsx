@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { AppShell } from "@/components/AppShell";
+import { AppShell, NotificationBell } from "@/components/AppShell";
 import {
   Badge,
   CardHeader,
@@ -24,6 +24,7 @@ import {
   MessageIcon,
   PlusIcon,
   ScentIcon,
+  SearchIcon,
   BoxIcon,
   TrainingIcon,
 } from "@/components/icons";
@@ -121,6 +122,18 @@ export default async function HomePage() {
       unread={unread}
       role={user.role}
       wide
+      action={
+        <>
+          <Link
+            href="/sok"
+            aria-label="Sök"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-fg transition-colors hover:bg-surface-2"
+          >
+            <SearchIcon className="h-[22px] w-[22px]" />
+          </Link>
+          <NotificationBell unread={unread} />
+        </>
+      }
     >
       {/* 1. Personligt sidhuvud */}
       <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

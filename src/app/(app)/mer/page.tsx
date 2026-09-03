@@ -11,6 +11,7 @@ import {
   GridIcon,
   LogoutIcon,
   MessageIcon,
+  SearchIcon,
   SettingsIcon,
   UserIcon,
   UsersIcon,
@@ -30,6 +31,12 @@ export default async function MorePage() {
   const user = { role, id: record.id, regionId: record.regionId };
 
   const items = [
+    {
+      href: "/sok",
+      label: "Sök",
+      Icon: SearchIcon,
+      show: true,
+    },
     {
       href: "/kalender",
       label: "Kalender",
