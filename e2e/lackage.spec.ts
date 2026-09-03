@@ -13,7 +13,8 @@ import { KONTON, loggaIn } from "./hjalp";
 /** Hämtar alla id:n en roll ser i en lista. */
 async function idn(page: Page, lista: string, prefix: string) {
   await page.goto(lista);
-  await page.waitForLoadState("networkidle");
+  // Inte networkidle: servicearbetaren håller nätet vaket, och sidan är
+  // ändå serverrenderad – länkarna finns i svaret.
   const hrefs = await page
     .locator(`a[href^="${prefix}"]`)
     .evaluateAll((el) => el.map((e) => e.getAttribute("href") ?? ""));
@@ -139,7 +140,9 @@ test("regionchef kan inte vidga sin vy med regionfiltret", async ({ page }) => {
   await loggaIn(page, KONTON.regional);
 
   await page.goto("/panel/ekipage");
-  await page.waitForLoadState("networkidle");
+  // Väntar på filtret i stället för på networkidle, som aldrig infaller
+  // när en servicearbetare är registrerad.
+  await page.locator('select[aria-label="Region"]').waitFor();
   const regionIds = await page
     .locator('select[aria-label="Region"] option')
     .evaluateAll((el) =>

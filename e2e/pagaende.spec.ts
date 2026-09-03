@@ -37,9 +37,10 @@ async function startatUppdrag(
   await page.fill('input[name="missionArea"]', "Terminal 5, Bagagehall");
 
   // Eget tidsfönster långt fram, så att ekipagen inte är upptagna av ett
-  // uppdrag en tidigare körning lade på samma tid.
+  // uppdrag en tidigare körning lade på samma tid. Varje provfil har sitt
+  // eget fönster; delade de ett skulle de göra varandra upptagna.
   const dag = new Date();
-  dag.setDate(dag.getDate() + 45 + (Date.now() % 60));
+  dag.setDate(dag.getDate() + 800 + (Date.now() % 240));
   await page.fill('input[name="date"]', dag.toISOString().slice(0, 10));
 
   await page.getByRole("button", { name: "Lägg upp uppdraget" }).click();

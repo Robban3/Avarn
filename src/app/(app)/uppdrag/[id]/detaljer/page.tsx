@@ -38,6 +38,7 @@ import {
   TaBortDokument,
 } from "@/components/Dokument";
 import { CERT_ICON_CLASSES } from "@/components/cert-styles";
+import { Offlinestatus } from "@/components/Offline";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
 import { can } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -236,6 +237,9 @@ export default async function MissionDetailsPage({
       unread={unread}
       role={user.role}
     >
+      {/* Statusraden hör hemma där dokumenten läses, och bara där. */}
+      {flik === "dokument" ? <Offlinestatus /> : null}
+
       <Tabs tabs={FLIKAR} active={flik} hrefFor={hrefFor} />
 
       {flik === "oversikt" ? (

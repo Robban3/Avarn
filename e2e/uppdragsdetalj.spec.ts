@@ -68,9 +68,11 @@ async function egetUppdragTillErik(
   await page.fill('input[name="locality"]', "Provorten");
 
   // Eget tidsfönster långt fram: körs sviten om läggs uppdragen annars på
-  // varandra, och då är ekipagen upptagna och föreslås inte längre.
+  // varandra, och då är ekipagen upptagna och föreslås inte längre. Varje
+  // provfil har sitt eget fönster, så att filerna inte tar plats för
+  // varandra.
   const dag = new Date();
-  dag.setDate(dag.getDate() + 45 + (Date.now() % 60));
+  dag.setDate(dag.getDate() + 1100 + (Date.now() % 240));
   await page.fill('input[name="date"]', dag.toISOString().slice(0, 10));
   // Sökinriktningen styr vilka ekipage som föreslås.
   await page.selectOption('select[name="disciplineId"]', { label: "Narkotika" });

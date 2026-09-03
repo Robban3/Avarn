@@ -41,7 +41,7 @@ async function uppdragMedForare(
   await page.selectOption('select[name="disciplineId"]', { label: "Narkotika" });
 
   const dag = new Date();
-  dag.setDate(dag.getDate() + 200 + (Date.now() % 40));
+  dag.setDate(dag.getDate() + 500 + (Date.now() % 240));
   await page.fill('input[name="date"]', dag.toISOString().slice(0, 10));
 
   await page.getByRole("button", { name: "Lägg upp uppdraget" }).click();
@@ -52,7 +52,9 @@ async function uppdragMedForare(
     .getByRole("button", { name: /^Tilldela (Nova|Rex)$/ })
     .first()
     .click();
-  await expect(page.getByText("Erbjudet").first()).toBeVisible();
+  await expect(page.getByText("Erbjudet").first()).toBeVisible({
+    timeout: 15_000,
+  });
 
   return uppdrag;
 }

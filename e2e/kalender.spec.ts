@@ -12,7 +12,7 @@ import { KONTON, loggaIn } from "./hjalp";
 /** Ett datum en bit fram i tiden, unikt för körningen. */
 function provdag() {
   const dag = new Date();
-  dag.setDate(dag.getDate() + 120 + (Date.now() % 40));
+  dag.setDate(dag.getDate() + 600 + (Date.now() % 240));
   return dag.toISOString().slice(0, 10);
 }
 
@@ -51,7 +51,9 @@ async function laggUppUppdrag(
     .getByRole("button", { name: /^Tilldela (Nova|Rex)$/ })
     .first()
     .click();
-  await expect(page.getByText("Erbjudet").first()).toBeVisible();
+  await expect(page.getByText("Erbjudet").first()).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 test("månadsvyn är huvudvyn och visar dagens lista", async ({ page }) => {

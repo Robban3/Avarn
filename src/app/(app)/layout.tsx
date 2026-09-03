@@ -1,3 +1,4 @@
+import { Servicearbetare } from "@/components/Servicearbetare";
 import { requireUser } from "@/lib/auth";
 
 /**
@@ -7,5 +8,10 @@ import { requireUser } from "@/lib/auth";
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   await requireUser();
-  return children;
+  return (
+    <>
+      <Servicearbetare />
+      {children}
+    </>
+  );
 }

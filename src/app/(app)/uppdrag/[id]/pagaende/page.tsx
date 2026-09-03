@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, Badge } from "@/components/ui";
 import { Karta, UtanKarta, Vagbeskrivning } from "@/components/Karta";
+import { Kobartformular, Offlinestatus } from "@/components/Offline";
 import {
   Atgardskort,
   AvslutaUppdrag,
@@ -163,6 +164,8 @@ export default async function OngoingMissionPage({
       unread={unread}
       role={user.role}
     >
+      <Offlinestatus />
+
       {/* 1. Vilket uppdrag, när och vilket nummer */}
       <section className="card mb-3 flex items-start gap-3 p-4">
         <div className="flex w-12 shrink-0 flex-col items-center rounded-lg border border-line bg-surface-2 py-2 leading-none">
@@ -349,7 +352,11 @@ export default async function OngoingMissionPage({
 
         <Snabbregistrering
           knappar={SNABBVAL.map(({ kind, label }) => (
-            <form key={kind} action={registerMissionEvent}>
+            <Kobartformular
+              key={kind}
+              action={registerMissionEvent}
+              typ="handelse"
+            >
               {uppdragsfalt}
               <input type="hidden" name="kind" value={kind} />
               <Tryckknapp
@@ -364,10 +371,14 @@ export default async function OngoingMissionPage({
                   {label}
                 </span>
               </Tryckknapp>
-            </form>
+            </Kobartformular>
           ))}
         >
-          <form action={registerMissionEvent} className="space-y-2.5">
+          <Kobartformular
+            action={registerMissionEvent}
+            typ="handelse"
+            className="space-y-2.5"
+          >
               {uppdragsfalt}
               <div>
                 <label className="field-label" htmlFor="kind">
@@ -401,7 +412,7 @@ export default async function OngoingMissionPage({
             <Tryckknapp className="btn btn-primary w-full">
               Registrera
             </Tryckknapp>
-          </form>
+          </Kobartformular>
         </Snabbregistrering>
 
         {/* Ett feltryck ska gå att ta bort igen. */}
