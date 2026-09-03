@@ -411,18 +411,27 @@ export async function removeMissionEvent(formData: FormData) {
   uppdateraPagaende(missionId);
 }
 
-/** Bockar av eller ångrar en punkt i checklistan. */
-export async function toggleChecklistItem(formData: FormData) {
+/**
+ * Sätter en punkt i checklistan till avbockad eller inte.
+ *
+ * Läget skickas med och räknas inte fram här. En växling hade varit
+ * kortare att skriva, men den kan inte skickas om: en registrering som
+ * legat i kön utan täckning och skickas två gånger hade då tagit tillbaka
+ * sig själv. Att sätta ett läge går att göra om hur många gånger som
+ * helst med samma resultat.
+ */
+export async function setChecklistItem(formData: FormData) {
   const user = await requireUser();
   const missionId = String(formData.get("missionId") ?? "");
   const punkt = String(formData.get("punkt") ?? "").trim();
+  const klar = String(formData.get("klar") ?? "") === "1";
   if (!punkt) return;
 
   const assignment = await egetPagaendeUppdrag(user, missionId);
 
   const avbockade = new Set(listaFranText(assignment.checklistDone));
-  if (avbockade.has(punkt)) avbockade.delete(punkt);
-  else avbockade.add(punkt);
+  if (klar) avbockade.add(punkt);
+  else avbockade.delete(punkt);
 
   await db.missionAssignment.update({
     where: { id: assignment.id },
@@ -433,19 +442,20 @@ export async function toggleChecklistItem(formData: FormData) {
 }
 
 /**
- * Ändrar hur stor del av området som är genomsökt.
+ * Sätter hur stor del av området som är genomsökt.
  *
- * Steget kommer från knappen och andelen är förarens egen bedömning –
- * appen har inget sätt att mäta den, och ska inte låtsas att den har det.
+ * Andelen är förarens egen bedömning – appen har inget sätt att mäta den,
+ * och ska inte låtsas att den har det. Liksom checklistan skickas det nya
+ * värdet och inte ett steg, så att en köad registrering tål att skickas om.
  */
 export async function setMissionProgress(formData: FormData) {
   const user = await requireUser();
   const missionId = String(formData.get("missionId") ?? "");
-  const steg = Number(formData.get("steg") ?? 0);
-  if (!Number.isFinite(steg)) return;
+  const andel = Number(formData.get("andel"));
+  if (!Number.isFinite(andel)) return;
 
   const assignment = await egetPagaendeUppdrag(user, missionId);
-  const nytt = Math.min(100, Math.max(0, assignment.progressPercent + steg));
+  const nytt = Math.min(100, Math.max(0, Math.round(andel)));
 
   await db.missionAssignment.update({
     where: { id: assignment.id },

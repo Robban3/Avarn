@@ -14,10 +14,17 @@ const DATABAS = "avarn-offline";
 const BUTIK = "ko";
 const HANDELSE = "avarn:ko";
 
+/**
+ * Vilken server action posten ska skickas till när nätet är tillbaka.
+ *
+ * Alla tre sätter ett läge och räknar inte fram det ur det gamla, så att
+ * en post som ligger kvar i kön tål att skickas om.
+ */
+export type Kotyp = "handelse" | "checklista" | "framdrift";
+
 export type Kopost = {
   id?: number;
-  /** Vilken server action posten ska skickas till när nätet är tillbaka. */
-  typ: "handelse";
+  typ: Kotyp;
   /** Formulärets fält, som de såg ut när föraren tryckte. */
   falt: [string, string][];
   skapad: number;

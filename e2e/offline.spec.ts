@@ -176,6 +176,74 @@ test("kön överlever att appen stängs och öppnas igen", async ({
   ).toContainText("1", { timeout: 20_000 });
 });
 
+test("checklistan och andelen svarar direkt utan täckning och kommer fram sedan", async ({
+  page,
+  context,
+}) => {
+  const uppdrag = await startatUppdrag(page, `Offline checklista ${Date.now()}`);
+  const andel = page.getByRole("progressbar", { name: "Genomsökt område" });
+  await expect(andel).toHaveAttribute("aria-valuenow", "0");
+
+  await kopplaNer(page, context);
+
+  // Knappen måste röra sig med en gång. En kryssruta som står still
+  // trycker föraren på igen, och då hade en växling tagit tillbaka sig
+  // själv – därför sätter registreringen ett läge i stället.
+  const punkt = page.getByRole("button", { name: "Säkerhetsgenomgång" });
+  await punkt.click();
+  await expect(punkt).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("1 / 6 klara")).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Öka genomsökt område med tio procent" })
+    .click();
+  await expect(andel).toHaveAttribute("aria-valuenow", "10");
+  await page
+    .getByRole("button", { name: "Öka genomsökt område med tio procent" })
+    .click();
+  await expect(andel).toHaveAttribute("aria-valuenow", "20");
+
+  await expect(status(page)).toContainText("3 registreringar sparade");
+
+  // Tillbaka i täckning: kön töms och servern har samma bild.
+  await context.setOffline(false);
+  await expect(status(page)).toHaveAttribute("data-lage", "klart", {
+    timeout: 20_000,
+  });
+
+  await page.goto(`${uppdrag}/detaljer?flik=checklista`);
+  await expect(page.getByText("1 av 6 punkter avbockade")).toBeVisible();
+
+  await page.goto(`${uppdrag}/pagaende`);
+  await expect(
+    page.getByRole("progressbar", { name: "Genomsökt område" }),
+  ).toHaveAttribute("aria-valuenow", "20");
+});
+
+test("en avbockning som skickas om tar inte tillbaka sig själv", async ({
+  page,
+  context,
+}) => {
+  const uppdrag = await startatUppdrag(page, `Offline idempotens ${Date.now()}`);
+
+  await kopplaNer(page, context);
+  const punkt = page.getByRole("button", { name: "Utrustning kontrollerad" });
+  await punkt.click();
+  await punkt.click();
+  await punkt.click();
+  await expect(punkt).toHaveAttribute("aria-pressed", "true");
+
+  await context.setOffline(false);
+  await expect(status(page)).toHaveAttribute("data-lage", "klart", {
+    timeout: 20_000,
+  });
+
+  // Tre köade poster, men den sista säger avbockad – och det är det
+  // läget som gäller, hur många gånger de än skickas.
+  await page.goto(`${uppdrag}/detaljer?flik=checklista`);
+  await expect(page.getByText("1 av 6 punkter avbockade")).toBeVisible();
+});
+
 test("ett dokument som lästs blir tillgängligt offline", async ({ page }) => {
   const uppdrag = await startatUppdrag(page, `Offline dokument ${Date.now()}`);
 

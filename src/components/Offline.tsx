@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon } from "./icons";
+import { CheckIcon, MinusIcon, PlusIcon } from "./icons";
 import {
   hamtaKo,
   koLangd,
@@ -17,8 +17,13 @@ import {
   prenumereraKo,
   serverKoLangd,
   taBortUrKo,
+  type Kotyp,
 } from "@/lib/offlineko";
-import { registerMissionEvent } from "@/app/(app)/uppdrag/actions";
+import {
+  registerMissionEvent,
+  setChecklistItem,
+  setMissionProgress,
+} from "@/app/(app)/uppdrag/actions";
 
 /**
  * Offline-läget så som det syns för föraren.
@@ -103,6 +108,8 @@ export function Offlinestatus() {
         for (const [namn, varde] of post.falt) data.append(namn, varde);
         try {
           if (post.typ === "handelse") await registerMissionEvent(data);
+          if (post.typ === "checklista") await setChecklistItem(data);
+          if (post.typ === "framdrift") await setMissionProgress(data);
           if (post.id !== undefined) await taBortUrKo(post.id);
         } catch {
           // Kommer den inte fram får den ligga kvar och prövas igen.
@@ -219,7 +226,7 @@ export function Kobartformular({
   children,
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  typ: "handelse";
+  typ: Kotyp;
   className?: string;
   children: ReactNode;
 }) {
@@ -239,6 +246,223 @@ export function Kobartformular({
       }}
     >
       {children}
+    </form>
+  );
+}
+
+/* ------------------------------------------- Checklistan och framdriften */
+
+/**
+ * Ett värde som visar förarens tryck direkt, men följer servern så snart
+ * den svarat.
+ *
+ * Utan uppkoppling kommer svaret först långt senare, och en knapp som
+ * inte rör sig när man trycker på den trycker man på igen. Det lokala
+ * värdet gäller därför tills serverns hunnit ikapp, och lämnas sedan
+ * över – justeringen görs under renderingen, som React föreskriver för
+ * tillstånd som följer en propp.
+ */
+function useEgetVarde<T>(franServern: T, likhet: (a: T, b: T) => boolean) {
+  const [eget, setEget] = useState(franServern);
+  const [sett, setSett] = useState(franServern);
+
+  if (!likhet(franServern, sett)) {
+    setSett(franServern);
+    setEget(franServern);
+  }
+
+  return [eget, setEget] as const;
+}
+
+/**
+ * Checklistan i den operativa vyn.
+ *
+ * Avbockningen sätter ett läge och växlar inte: en köad registrering ska
+ * tåla att skickas om utan att ta tillbaka sig själv.
+ */
+export function Checklista({
+  missionId,
+  punkter,
+  avbockade,
+  action,
+}: {
+  missionId: string;
+  punkter: string[];
+  avbockade: string[];
+  action: (formData: FormData) => void | Promise<void>;
+}) {
+  const [klara, setKlara] = useEgetVarde(avbockade, (a, b) =>
+    a.length === b.length && a.every((v, i) => v === b[i]),
+  );
+  const avbockad = (punkt: string) => klara.includes(punkt);
+
+  const satt = (punkt: string, nyttLage: boolean) => {
+    setKlara(
+      nyttLage ? [...klara, punkt] : klara.filter((v) => v !== punkt),
+    );
+    const data = new FormData();
+    data.append("missionId", missionId);
+    data.append("punkt", punkt);
+    data.append("klar", nyttLage ? "1" : "0");
+    void laggIKo({ typ: "checklista", falt: [...data.entries()] as [string, string][] });
+  };
+
+  return (
+    <>
+      <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        <h2 className="section-label">Checklista</h2>
+        <span className="text-xs font-medium text-brand">
+          {klara.length} / {punkter.length} klara
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3">
+        {punkter.map((punkt) => {
+          const klar = avbockad(punkt);
+          return (
+            // Formuläret finns kvar för den som inte fått sidans kod
+            // ännu: då går trycket rakt till sin server action.
+            <form
+              key={punkt}
+              action={action}
+              onSubmit={(handelse) => {
+                handelse.preventDefault();
+                satt(punkt, !klar);
+              }}
+            >
+              <input type="hidden" name="missionId" value={missionId} />
+              <input type="hidden" name="punkt" value={punkt} />
+              <input type="hidden" name="klar" value={klar ? "0" : "1"} />
+              <button
+                type="submit"
+                aria-pressed={klar}
+                className="flex w-full items-center gap-2.5 py-2 text-left transition-opacity hover:opacity-80"
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${
+                    klar
+                      ? "border-brand bg-brand text-[#06201e]"
+                      : "border-line bg-surface-2 text-transparent"
+                  }`}
+                >
+                  <CheckIcon className="h-3 w-3" />
+                </span>
+                <span
+                  className={`min-w-0 flex-1 text-[13px] leading-tight ${
+                    klar ? "text-fg-muted" : "text-fg"
+                  }`}
+                >
+                  {punkt}
+                </span>
+              </button>
+            </form>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/** Mätaren för genomsökt andel, i steg om tio procent. */
+export function Genomsokt({
+  missionId,
+  andel,
+  action,
+}: {
+  missionId: string;
+  andel: number;
+  action: (formData: FormData) => void | Promise<void>;
+}) {
+  const [varde, setVarde] = useEgetVarde(andel, (a, b) => a === b);
+
+  const flytta = (steg: number) => {
+    const nytt = Math.min(100, Math.max(0, varde + steg));
+    if (nytt === varde) return;
+    setVarde(nytt);
+    const data = new FormData();
+    data.append("missionId", missionId);
+    data.append("andel", String(nytt));
+    void laggIKo({ typ: "framdrift", falt: [...data.entries()] as [string, string][] });
+  };
+
+  const knapp =
+    "flex h-5 w-5 items-center justify-center rounded border border-line bg-surface-2 text-fg transition-colors hover:bg-surface-3";
+
+  return (
+    <>
+      <div className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap">
+        <Stegknapp
+          missionId={missionId}
+          andel={Math.max(0, varde - 10)}
+          action={action}
+          onTryck={() => flytta(-10)}
+          etikett="Minska genomsökt område med tio procent"
+          className={knapp}
+        >
+          <MinusIcon className="h-3 w-3" />
+        </Stegknapp>
+        <span className="text-[15px] font-bold tabular-nums text-brand">
+          {varde} %
+        </span>
+        <Stegknapp
+          missionId={missionId}
+          andel={Math.min(100, varde + 10)}
+          action={action}
+          onTryck={() => flytta(10)}
+          etikett="Öka genomsökt område med tio procent"
+          className={knapp}
+        >
+          <PlusIcon className="h-3 w-3" />
+        </Stegknapp>
+      </div>
+      <div
+        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-3"
+        role="progressbar"
+        aria-valuenow={varde}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Genomsökt område"
+      >
+        <div
+          className="h-full rounded-full bg-brand transition-all"
+          style={{ width: `${varde}%` }}
+        />
+      </div>
+    </>
+  );
+}
+
+function Stegknapp({
+  missionId,
+  andel,
+  action,
+  onTryck,
+  etikett,
+  className,
+  children,
+}: {
+  missionId: string;
+  andel: number;
+  action: (formData: FormData) => void | Promise<void>;
+  onTryck: () => void;
+  etikett: string;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <form
+      action={action}
+      onSubmit={(handelse) => {
+        handelse.preventDefault();
+        onTryck();
+      }}
+    >
+      <input type="hidden" name="missionId" value={missionId} />
+      <input type="hidden" name="andel" value={andel} />
+      <button type="submit" aria-label={etikett} className={className}>
+        {children}
+      </button>
     </form>
   );
 }

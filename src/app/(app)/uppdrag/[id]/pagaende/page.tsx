@@ -4,7 +4,12 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, Badge } from "@/components/ui";
 import { Karta, UtanKarta, Vagbeskrivning } from "@/components/Karta";
-import { Kobartformular, Offlinestatus } from "@/components/Offline";
+import {
+  Checklista,
+  Genomsokt,
+  Kobartformular,
+  Offlinestatus,
+} from "@/components/Offline";
 import {
   Atgardskort,
   AvslutaUppdrag,
@@ -15,12 +20,9 @@ import {
 } from "@/components/PagaendeUppdrag";
 import {
   AlertIcon,
-  CheckIcon,
   ClipboardIcon,
   FlagIcon,
-  MinusIcon,
   PawIcon,
-  PlusIcon,
   ScentIcon,
   StopwatchIcon,
   UserIcon,
@@ -48,7 +50,7 @@ import {
   registerMissionEvent,
   removeMissionEvent,
   setMissionProgress,
-  toggleChecklistItem,
+  setChecklistItem,
 } from "../../actions";
 
 export const metadata: Metadata = { title: "Pågående uppdrag" };
@@ -120,7 +122,6 @@ export default async function OngoingMissionPage({
   }
 
   const avbockade = new Set(listaFranText(assignment.checklistDone));
-  const klara = missionChecklist.filter((p) => avbockade.has(p)).length;
 
   const antal = (kind: string) =>
     assignment.events.filter((e) => e.kind === kind).length;
@@ -294,44 +295,11 @@ export default async function OngoingMissionPage({
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-fg-dim">
               Genomsökt
             </p>
-            <div className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap">
-              <form action={setMissionProgress}>
-                {uppdragsfalt}
-                <input type="hidden" name="steg" value="-10" />
-                <Tryckknapp
-                  className="flex h-5 w-5 items-center justify-center rounded border border-line bg-surface-2 text-fg transition-colors hover:bg-surface-3"
-                  aria-label="Minska genomsökt område med tio procent"
-                >
-                  <MinusIcon className="h-3 w-3" />
-                </Tryckknapp>
-              </form>
-              <span className="text-[15px] font-bold tabular-nums text-brand">
-                {assignment.progressPercent} %
-              </span>
-              <form action={setMissionProgress}>
-                {uppdragsfalt}
-                <input type="hidden" name="steg" value="10" />
-                <Tryckknapp
-                  className="flex h-5 w-5 items-center justify-center rounded border border-line bg-surface-2 text-fg transition-colors hover:bg-surface-3"
-                  aria-label="Öka genomsökt område med tio procent"
-                >
-                  <PlusIcon className="h-3 w-3" />
-                </Tryckknapp>
-              </form>
-            </div>
-            <div
-              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-3"
-              role="progressbar"
-              aria-valuenow={assignment.progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Genomsökt område"
-            >
-              <div
-                className="h-full rounded-full bg-brand transition-all"
-                style={{ width: `${assignment.progressPercent}%` }}
-              />
-            </div>
+            <Genomsokt
+              missionId={mission.id}
+              andel={assignment.progressPercent}
+              action={setMissionProgress}
+            />
           </div>
 
           <Nyckeltal
@@ -449,44 +417,12 @@ export default async function OngoingMissionPage({
 
       {/* 6. Checklistan */}
       <section className="card mb-3 p-4">
-        <div className="mb-2.5 flex items-baseline justify-between gap-3">
-          <h2 className="section-label">Checklista</h2>
-          <span className="text-xs font-medium text-brand">
-            {klara} / {missionChecklist.length} klara
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-3">
-          {missionChecklist.map((punkt) => {
-            const klar = avbockade.has(punkt);
-            return (
-              <form key={punkt} action={toggleChecklistItem}>
-                {uppdragsfalt}
-                <input type="hidden" name="punkt" value={punkt} />
-                <Tryckknapp
-                  className="flex w-full items-center gap-2.5 py-2 text-left transition-opacity hover:opacity-80"
-                  aria-pressed={klar}
-                >
-                  <span
-                    aria-hidden
-                    className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${
-                      klar
-                        ? "border-brand bg-brand text-[#06201e]"
-                        : "border-line bg-surface-2 text-transparent"
-                    }`}
-                  >
-                    <CheckIcon className="h-3 w-3" />
-                  </span>
-                  <span
-                    className={`min-w-0 flex-1 text-[13px] leading-tight ${klar ? "text-fg-muted" : "text-fg"}`}
-                  >
-                    {punkt}
-                  </span>
-                </Tryckknapp>
-              </form>
-            );
-          })}
-        </div>
+        <Checklista
+          missionId={mission.id}
+          punkter={missionChecklist}
+          avbockade={missionChecklist.filter((p) => avbockade.has(p))}
+          action={setChecklistItem}
+        />
       </section>
 
       {/* 7. Kommunikation, dokument och rapport */}
