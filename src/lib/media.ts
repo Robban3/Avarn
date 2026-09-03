@@ -26,6 +26,10 @@ const ALLOWED: Record<string, { ext: string; kind: "IMAGE" | "VIDEO" | "DOCUMENT
   "video/mp4": { ext: ".mp4", kind: "VIDEO" },
   "video/quicktime": { ext: ".mov", kind: "VIDEO" },
   "application/pdf": { ext: ".pdf", kind: "DOCUMENT" },
+  // Uppdragsunderlag är oftast pdf, men en anteckning eller en exporterad
+  // lista kommer lika gärna som ren text.
+  "text/plain": { ext: ".txt", kind: "DOCUMENT" },
+  "text/csv": { ext: ".csv", kind: "DOCUMENT" },
 };
 
 export function isAllowedType(mimeType: string) {

@@ -14,11 +14,16 @@ import { Karta, UtanKarta } from "@/components/Karta";
 import {
   BoxIcon,
   CarIcon,
+  CertificateIcon,
   ClipboardIcon,
   ClockIcon,
+  FileIcon,
   FolderIcon,
+  ImageIcon,
+  MovieIcon,
   CheckCircleIcon,
   CheckIcon,
+  ChevronRightIcon,
   MapPinIcon,
   MessageIcon,
   RouteIcon,
@@ -27,13 +32,29 @@ import {
   UserIcon,
   UsersIcon,
 } from "@/components/icons";
+import {
+  LaggTillBilaga,
+  OfflineMarkering,
+  TaBortDokument,
+} from "@/components/Dokument";
+import { CERT_ICON_CLASSES } from "@/components/cert-styles";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
+import { can } from "@/lib/authz";
+import { db } from "@/lib/db";
+import {
+  CERT_STATUS_LABELS,
+  CERT_STATUS_TONES,
+  certStatus,
+  certValidityText,
+} from "@/lib/certifications";
 import { audit } from "@/lib/audit";
 import {
   durationMinutes,
   formatDayNumber,
   formatDuration,
   formatMonthShort,
+  formatShortDate,
+  formatTime,
   formatTimeRange,
   listaFranText,
 } from "@/lib/format";
@@ -78,7 +99,44 @@ export default async function MissionDetailsPage({
     detail: "Platsvy",
   });
 
+  // Dokumenten och behörigheterna hämtas först när fliken visas – de
+  // andra flikarna ska inte betala för två frågor de aldrig använder.
   const flik = typeof query.flik === "string" ? query.flik : "oversikt";
+  const kanLaggaUppUnderlag = can(user, "mission:create");
+  const [dokument, behorigheter] =
+    flik === "dokument"
+      ? await Promise.all([
+          db.mediaAsset.findMany({
+            where: { missionId: mission.id },
+            include: { uploadedBy: { select: { name: true } } },
+            orderBy: { createdAt: "asc" },
+          }),
+          // Behörigheterna uppdraget kräver, hämtade ur certifikatmodulen
+          // för de ekipage som faktiskt är tilldelade.
+          db.certification.findMany({
+            where: {
+              OR: [
+                { teamId: { in: mission.assignments.map((a) => a.teamId) } },
+                {
+                  dogId: {
+                    in: mission.assignments.map((a) => a.team.dogId),
+                  },
+                },
+                {
+                  userId: {
+                    in: mission.assignments.map((a) => a.team.handlerId),
+                  },
+                },
+              ],
+            },
+            include: { type: true },
+            orderBy: { expiresAt: "asc" },
+          }),
+        ])
+      : [[], []];
+
+  const underlag = dokument.filter((d) => d.missionSource !== "ATTACHMENT");
+  const bilagor = dokument.filter((d) => d.missionSource === "ATTACHMENT");
   const hrefFor = (value: string) =>
     value === "oversikt"
       ? `/uppdrag/${mission.id}/detaljer`
@@ -372,12 +430,183 @@ export default async function MissionDetailsPage({
       ) : null}
 
       {flik === "dokument" ? (
-        <EmptyState
-          icon={<FolderIcon className="h-7 w-7" />}
-          title="Inga dokument"
-          description="Inga dokument är kopplade till uppdraget. Bilder och filmer från genomförandet läggs i den operativa rapporten."
-        />
+        <section>
+          <div className="mb-2.5 flex items-center justify-between">
+            <h2 className="section-label">Från uppdragsgivaren</h2>
+          </div>
+          {underlag.length === 0 ? (
+            <p className="mb-4 text-sm text-fg-muted">
+              Inget underlag är upplagt på uppdraget ännu.
+            </p>
+          ) : (
+            <div className="card mb-4 divide-y divide-line-soft">
+              {underlag.map((dokument) => (
+                <Dokumentrad
+                  key={dokument.id}
+                  dokument={dokument}
+                  missionId={mission.id}
+                  farTaBort={
+                    dokument.uploadedById === user.id || kanLaggaUppUnderlag
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mb-2.5 flex items-center justify-between">
+            <h2 className="section-label">Egna bilagor</h2>
+            <LaggTillBilaga missionId={mission.id} />
+          </div>
+          {bilagor.length === 0 ? (
+            <p className="mb-4 text-sm text-fg-muted">
+              Foton och filer du lägger till på plats hamnar här.
+            </p>
+          ) : (
+            <div className="card mb-4 divide-y divide-line-soft">
+              {bilagor.map((dokument) => (
+                <Dokumentrad
+                  key={dokument.id}
+                  dokument={dokument}
+                  missionId={mission.id}
+                  farTaBort={
+                    dokument.uploadedById === user.id || kanLaggaUppUnderlag
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {behorigheter.length > 0 ? (
+            <>
+              <SectionHeader title="Behörigheter" />
+              <div className="card divide-y divide-line-soft">
+                {behorigheter.map((cert) => {
+                  const status = certStatus(cert.expiresAt);
+                  return (
+                    <Link
+                      key={cert.id}
+                      href="/certifikat"
+                      className="flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-surface-2"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2">
+                        <CertificateIcon
+                          className={`h-[18px] w-[18px] ${CERT_ICON_CLASSES[status]}`}
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {cert.type.name}
+                        </p>
+                        <p className="truncate text-xs text-fg-muted">
+                          {certValidityText(cert.expiresAt)}
+                        </p>
+                      </div>
+                      <Badge tone={CERT_STATUS_TONES[status]}>
+                        {CERT_STATUS_LABELS[status]}
+                      </Badge>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+
+          {underlag.length === 0 && bilagor.length === 0 ? (
+            <div className="mt-4">
+              <EmptyState
+                icon={<FolderIcon className="h-7 w-7" />}
+                title="Inga dokument ännu"
+                description={
+                  kanLaggaUppUnderlag
+                    ? "Lägg upp uppdragsgivarens underlag här, så finns det hos föraren på plats."
+                    : "Uppdragsgivarens underlag läggs upp av regionalt ansvarig. Egna bilagor kan du lägga till här."
+                }
+                action={
+                  <LaggTillBilaga
+                    missionId={mission.id}
+                    variant="knapp"
+                    etikett={
+                      kanLaggaUppUnderlag ? "Lägg upp underlag" : "Lägg till bilaga"
+                    }
+                  />
+                }
+              />
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </AppShell>
+  );
+}
+
+/** Filstorlek i det format en förare läser i förbifarten. */
+function filstorlek(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
+const FILIKON = {
+  IMAGE: ImageIcon,
+  VIDEO: MovieIcon,
+  DOCUMENT: FileIcon,
+} as const;
+
+/**
+ * En rad i dokumentlistan: filikon efter typ, namn, vem som lade upp den
+ * och när – och offline-status bara på de filer som faktiskt finns kvar i
+ * telefonen.
+ */
+function Dokumentrad({
+  dokument,
+  missionId,
+  farTaBort,
+}: {
+  dokument: {
+    id: string;
+    kind: string;
+    originalName: string;
+    size: number;
+    createdAt: Date;
+    uploadedBy: { name: string };
+  };
+  missionId: string;
+  farTaBort: boolean;
+}) {
+  const Ikon = FILIKON[dokument.kind as keyof typeof FILIKON] ?? FileIcon;
+  const url = `/api/media/${dokument.id}`;
+
+  return (
+    <div className="flex items-start gap-3 px-3.5 py-3">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="flex min-w-0 flex-1 items-start gap-3"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-brand">
+          <Ikon className="h-[18px] w-[18px]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">
+            {dokument.originalName}
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-fg-muted">
+            {filstorlek(dokument.size)} · {dokument.uploadedBy.name} ·{" "}
+            {formatShortDate(dokument.createdAt)} {formatTime(dokument.createdAt)}
+          </span>
+          <OfflineMarkering url={url} />
+        </span>
+      </a>
+      {farTaBort ? (
+        <TaBortDokument
+          missionId={missionId}
+          dokumentId={dokument.id}
+          namn={dokument.originalName}
+        />
+      ) : (
+        <ChevronRightIcon className="mt-1.5 h-[18px] w-[18px] shrink-0 text-fg-dim" />
+      )}
+    </div>
   );
 }

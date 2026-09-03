@@ -106,16 +106,21 @@ test("månadspilarna byter månad", async ({ page }) => {
 
 test("veckovyn ritar krockande uppdrag sida vid sida", async ({ page }) => {
   const datum = provdag();
+  // Rubrikerna är körningens egna, så att en tidigare körnings uppdrag på
+  // samma vecka inte räknas med bland blocken.
+  const stampel = Date.now();
+  const forsta = `Krock A ${stampel}`;
+  const andra = `Krock B ${stampel}`;
 
   await loggaIn(page, KONTON.regional);
   await laggUppUppdrag(page, {
-    rubrik: `Kalender A ${Date.now()}`,
+    rubrik: forsta,
     datum,
     start: "13:00",
     slut: "15:00",
   });
   await laggUppUppdrag(page, {
-    rubrik: `Kalender B ${Date.now()}`,
+    rubrik: andra,
     datum,
     start: "13:30",
     slut: "15:30",
@@ -124,28 +129,31 @@ test("veckovyn ritar krockande uppdrag sida vid sida", async ({ page }) => {
   await loggaIn(page, KONTON.hundforare);
   await page.goto(`/kalender?dag=${datum}&vy=vecka`);
 
-  await expect(page.getByRole("link", { name: "Vecka", exact: true })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await expect(
+    page.getByRole("link", { name: "Vecka", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 
   // Båda blocken finns, och de är halva kolumnen breda var – det är den
   // dubbelbokning veckovyn finns till för att visa.
-  const block = page.locator('a[title*="Kalender A"], a[title*="Kalender B"]');
+  const block = page.locator(
+    `a[title^="${forsta}"], a[title^="${andra}"]`,
+  );
   await expect(block).toHaveCount(2);
 
   const bredder = await block.evaluateAll((noder) =>
     noder.map((n) => n.getBoundingClientRect().width),
   );
   const kolumnbredd = await page
-    .locator('a[title*="Kalender A"]')
+    .locator(`a[title^="${forsta}"]`)
     .evaluate((n) => (n.parentElement?.getBoundingClientRect().width ?? 0) / 7);
   for (const bredd of bredder) {
     expect(bredd).toBeLessThan(kolumnbredd * 0.7);
   }
 
   // Och krocken skrivs ut i klartext under rutnätet.
-  await expect(page.getByText(/krockar 13:30–15:00/)).toBeVisible();
+  await expect(
+    page.getByText(`${forsta} och ${andra} krockar 13:30–15:00.`),
+  ).toBeVisible();
 });
 
 test("veckovyn kan bytas till månad och tillbaka", async ({ page }) => {

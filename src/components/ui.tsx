@@ -52,7 +52,9 @@ export function Tabs({
           key={tab.value}
           href={hrefFor(tab.value)}
           aria-current={active === tab.value ? "page" : undefined}
-          className={`shrink-0 px-4 pb-2.5 text-center text-[13px] font-semibold uppercase tracking-wide transition-colors ${
+          // 10 px sidluft i stället för 16: fyra flikar med versala
+          // etiketter ska rymmas på en telefon utan att den sista klipps.
+          className={`shrink-0 px-2.5 pb-2.5 text-center text-[13px] font-semibold uppercase tracking-wide transition-colors ${
             active === tab.value
               ? "border-b-2 border-brand text-brand"
               : "text-fg-dim hover:text-fg-muted"

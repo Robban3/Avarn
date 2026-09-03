@@ -449,6 +449,15 @@ export const HandshakeIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const TrashIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4.5 6.5h15" />
+    <path d="M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5" />
+    <path d="M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5" />
+    <path d="M10.3 10v7M13.7 10v7" />
+  </Icon>
+);
+
 export const DownloadIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 4v10" />
@@ -463,5 +472,28 @@ export const KebabIcon = (p: IconProps) => (
     <circle cx="12" cy="5.5" r=".6" fill="currentColor" />
     <circle cx="12" cy="12" r=".6" fill="currentColor" />
     <circle cx="12" cy="18.5" r=".6" fill="currentColor" />
+  </Icon>
+);
+
+/** Filtypsikoner i uppdragets dokumentflik. */
+export const FileIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M13.5 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5l-5-5Z" />
+    <path d="M13.5 3.5v5h5" />
+  </Icon>
+);
+
+export const ImageIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5" width="17" height="14" rx="2.2" />
+    <circle cx="8.8" cy="10" r="1.6" />
+    <path d="m4.5 17 4.8-4.4 4 3.4 2.6-2.4 3.6 3.4" />
+  </Icon>
+);
+
+export const MovieIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
+    <path d="M10 9.5 15 12l-5 2.5v-5Z" />
   </Icon>
 );

@@ -394,6 +394,7 @@ model Mission {
 
   assignments MissionAssignment[]
   reports     OperationalReport[]
+  documents   MediaAsset[]
 
   @@index([startAt])
   @@index([regionId])
@@ -525,10 +526,19 @@ model MediaAsset {
   dog               Dog? @relation("DogPhotos", fields: [dogId], references: [id], onDelete: Cascade)
   profileUserId     String?
   profileUser       User? @relation("ProfilePhotos", fields: [profileUserId], references: [id], onDelete: Cascade)
+  missionId         String?
+  mission           Mission? @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  /**
+   * Vilken avdelning dokumentet hör till i uppdragets dokumentflik:
+   * CUSTOMER = underlag från uppdragsgivaren, ATTACHMENT = förarens egen
+   * bilaga. Null för filer som inte hör till ett uppdrag.
+   */
+  missionSource     String?
 
   @@index([trainingSessionId])
   @@index([reportId])
   @@index([dogId])
+  @@index([missionId])
 }
 
 model Comment {

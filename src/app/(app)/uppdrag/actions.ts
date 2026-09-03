@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { assertCan, regionScope, teamScope } from "@/lib/authz";
+import { assertCan, can, regionScope, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
 import {
   formatKoordinatlista,
@@ -17,6 +17,12 @@ import {
 import { EVENT_KINDS, type EventKind } from "@/lib/domain";
 import type { SessionUser } from "@/lib/session";
 import { notify } from "@/lib/notify";
+import {
+  MAX_UPLOAD_BYTES,
+  isAllowedType,
+  removeUpload,
+  storeUpload,
+} from "@/lib/media";
 
 /** Server actions för uppdrag: skapa, tilldela och svara. */
 
@@ -619,4 +625,113 @@ export async function setMissionStatus(formData: FormData) {
 
   revalidatePath(`/uppdrag/${mission.id}`);
   revalidatePath("/uppdrag");
+}
+
+/* ----------------------------------------------------------- Dokument */
+
+/**
+ * Uppdraget, om användaren får lägga till eller ta bort dokument på det.
+ *
+ * Samma avgränsning som missionForUser: den som lägger upp uppdrag når
+ * sin regions uppdrag, föraren bara dem hens ekipage är tilldelade. En
+ * förare som inte accepterat ännu ska ändå komma åt underlaget – det är
+ * ofta det man läser innan man svarar.
+ */
+async function uppdragForDokument(user: SessionUser, missionId: string) {
+  const mission = await db.mission.findFirst({
+    where: can(user, "mission:assign")
+      ? { id: missionId, ...regionScope(user) }
+      : { id: missionId, assignments: { some: { team: teamScope(user) } } },
+    select: { id: true },
+  });
+  if (!mission) throw new Error("Uppdraget ligger utanför din behörighet.");
+  return mission;
+}
+
+export type DokumentFormState = { error?: string; ok?: string };
+
+/**
+ * Lägger upp ett dokument på uppdraget.
+ *
+ * Uppdragsgivarens underlag läggs upp av den som lägger upp uppdraget;
+ * en förare kan bara lägga till egna bilagor. Avdelningen bestäms alltså
+ * av rollen och inte av formuläret, så att ett fejkat fält inte kan
+ * placera en egen fil bland uppdragsgivarens underlag.
+ */
+export async function uploadMissionDocument(
+  _prev: DokumentFormState,
+  formData: FormData,
+): Promise<DokumentFormState> {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const mission = await uppdragForDokument(user, missionId);
+
+  const file = formData.get("fil");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Välj en fil att lägga till." };
+  }
+  if (!isAllowedType(file.type)) {
+    return { error: `Filtypen ${file.type || "okänd"} stöds inte.` };
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: "Filen är för stor. Högst 25 MB per fil." };
+  }
+
+  const stored = await storeUpload(file);
+  await db.mediaAsset.create({
+    data: {
+      ...stored,
+      uploadedById: user.id,
+      missionId: mission.id,
+      missionSource: can(user, "mission:create") ? "CUSTOMER" : "ATTACHMENT",
+    },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "CREATE",
+    entityType: "MissionDocument",
+    entityId: mission.id,
+    detail: stored.originalName,
+  });
+
+  revalidatePath(`/uppdrag/${mission.id}/detaljer`);
+  return { ok: `${stored.originalName} lades till.` };
+}
+
+/**
+ * Tar bort ett dokument.
+ *
+ * Den som laddade upp filen får ta bort den, och den som lägger upp
+ * uppdrag får rätta sitt eget underlag. En förare ska däremot inte kunna
+ * radera uppdragsgivarens instruktion.
+ */
+export async function removeMissionDocument(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const dokumentId = String(formData.get("dokumentId") ?? "");
+  const mission = await uppdragForDokument(user, missionId);
+
+  const dokument = await db.mediaAsset.findFirst({
+    where: { id: dokumentId, missionId: mission.id },
+  });
+  if (!dokument) throw new Error("Dokumentet finns inte på uppdraget.");
+
+  const egen = dokument.uploadedById === user.id;
+  if (!egen && !can(user, "mission:create")) {
+    throw new Error("Du får bara ta bort dina egna bilagor.");
+  }
+
+  await db.mediaAsset.delete({ where: { id: dokument.id } });
+  await removeUpload(dokument.storedName);
+
+  await audit({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "MissionDocument",
+    entityId: mission.id,
+    detail: dokument.originalName,
+  });
+
+  revalidatePath(`/uppdrag/${mission.id}/detaljer`);
 }

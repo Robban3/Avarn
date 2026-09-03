@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "./db";
-import { teamScope } from "./authz";
+import { can, regionScope, teamScope } from "./authz";
 import type { SessionUser } from "./session";
 
 /**
@@ -54,6 +54,18 @@ export async function canAccessMedia(user: SessionUser, mediaId: string) {
 
     const ok = await db.team.findFirst({
       where: { AND: [scope, { OR: villkor }] },
+      select: { id: true },
+    });
+    return ok ? asset : null;
+  }
+
+  // Uppdragsdokument: samma avgränsning som uppdraget självt i
+  // missionForUser, så att dokumentfliken inte blir en genväg förbi den.
+  if (asset.missionId) {
+    const ok = await db.mission.findFirst({
+      where: can(user, "mission:assign")
+        ? { id: asset.missionId, ...regionScope(user) }
+        : { id: asset.missionId, assignments: { some: { team: scope } } },
       select: { id: true },
     });
     return ok ? asset : null;

@@ -146,9 +146,7 @@ test("platsvyn visar rätt punkt och länkar vidare till kartappen", async ({
   ).toHaveAttribute("href", /query=59\.6498,17\.9239/);
 });
 
-test("checklistan visas och dokumentfliken är ärligt tom", async ({
-  page,
-}) => {
+test("checklistan visas", async ({ page }) => {
   await loggaIn(page, KONTON.hundforare);
   await oppnaArlanda(page);
   const uppdrag = page.url();
@@ -157,9 +155,6 @@ test("checklistan visas och dokumentfliken är ärligt tom", async ({
   await expect(page.getByText("0 av 6 punkter avbockade")).toBeVisible();
   await expect(page.getByText("Säkerhetsgenomgång")).toBeVisible();
   await expect(page.getByText("Rapport ifylld")).toBeVisible();
-
-  await page.goto(`${uppdrag}/detaljer?flik=dokument`);
-  await expect(page.getByText("Inga dokument", { exact: true })).toBeVisible();
 });
 
 test("föraren startar uppdraget, och kan inte starta det två gånger", async ({
