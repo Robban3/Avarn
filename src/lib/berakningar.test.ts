@@ -10,6 +10,7 @@ import {
 } from "./format";
 import { addMonths, egetIntyg } from "./certifications";
 import { valjNotiser } from "./notiser";
+import { franHandelser } from "./handelser";
 import { axelSteg, procentandelar } from "@/components/AdminCharts";
 
 /**
@@ -199,5 +200,60 @@ describe("beräknad varaktighet", () => {
     expect(formatDuration(120)).toBe("2 h");
     expect(formatDuration(45)).toBe("45 min");
     expect(formatDuration(0)).toBe("–");
+  });
+});
+
+describe("händelser blir en förifylld rapport", () => {
+  const kl = (timme: number, minut: number) =>
+    fromLocalInput(`2026-09-03T${String(timme).padStart(2, "0")}:${String(minut).padStart(2, "0")}`);
+
+  it("ger null när inget registrerats", () => {
+    expect(franHandelser([])).toBeNull();
+  });
+
+  it("lägger varje typ i sitt fält", () => {
+    const resultat = franHandelser([
+      { kind: "MARKING", note: "Bagageband 7", at: kl(9, 42) },
+      { kind: "FIND", note: "1 paket cannabis", at: kl(9, 50) },
+      { kind: "DEVIATION", note: "Port 4 låst", at: kl(10, 5) },
+      { kind: "NOTE", note: "Hunden arbetade lugnt", at: kl(10, 20) },
+    ]);
+
+    expect(resultat?.indications).toEqual([
+      {
+        location: "Bagageband 7",
+        description: "Registrerad 09:42",
+        outcome: "FIND",
+        handedOverTo: "",
+      },
+    ]);
+    expect(resultat?.findings).toBe("09:50 – 1 paket cannabis");
+    expect(resultat?.deviations).toBe("10:05 – Port 4 låst");
+    expect(resultat?.comment).toBe("10:20 – Hunden arbetade lugnt");
+  });
+
+  it("behåller klockslaget även för ett tryck utan text", () => {
+    // Ett tryck ska räcka i fält; texten kan komma i rapporten efteråt.
+    const resultat = franHandelser([
+      { kind: "FIND", note: null, at: kl(11, 3) },
+    ]);
+    expect(resultat?.findings).toBe("11:03 – registrerat under uppdraget");
+  });
+
+  it("samlar noteringar och övriga händelser i tidsordning", () => {
+    const resultat = franHandelser([
+      { kind: "OTHER", note: "Polis på plats", at: kl(12, 0) },
+      { kind: "NOTE", note: "Paus", at: kl(11, 0) },
+    ]);
+    expect(resultat?.comment).toBe("11:00 – Paus\n12:00 – Polis på plats");
+  });
+});
+
+describe("varaktighet vid noll", () => {
+  it("skiljer på ingen varaktighet och noll minuter", () => {
+    // "–" betyder att uppgiften saknas. En klocka som just startat har
+    // en varaktighet, och timern skriver därför ut den själv.
+    expect(formatDuration(0)).toBe("–");
+    expect(formatDuration(1)).toBe("1 min");
   });
 });

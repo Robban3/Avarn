@@ -52,6 +52,7 @@ model User {
   createdSessions       TrainingSession[]      @relation("SessionAuthor")
   approvedSessions      TrainingSession[]      @relation("SessionApprover")
   createdMissions       Mission[]              @relation("MissionCreator")
+  missionEvents         MissionEvent[]         @relation("EventCreator")
   assignmentsMade       MissionAssignment[]    @relation("AssignmentAssigner")
   reports               OperationalReport[]    @relation("ReportAuthor")
   approvedReports       OperationalReport[]    @relation("ReportApprover")
@@ -399,10 +400,43 @@ model MissionAssignment {
   respondedAt  DateTime?
   /** När föraren tryckte "Starta uppdrag" – förifyller rapportens starttid. */
   startedAt    DateTime?
+  /** När föraren avslutade sitt arbete på plats. */
+  endedAt      DateTime?
+  /** Hur stor del av området som är genomsökt, satt av föraren själv. */
+  progressPercent Int    @default(0)
+  /**
+   * Avbockade punkter ur checklistan, en rad per punkt.
+   *
+   * Punkterna själva är en inställning och kan ändras av administratören;
+   * här sparas bara vilka som är avbockade. Byter någon ut en punkt i
+   * efterhand matchar den gamla bockningen inget och räknas inte – bättre
+   * än en kopia av listan per uppdrag som tyst hamnar i otakt.
+   */
+  checklistDone String?
   createdAt    DateTime  @default(now())
+
+  events MissionEvent[]
 
   @@unique([missionId, teamId])
   @@index([teamId])
+}
+
+/**
+ * En händelse registrerad under pågående uppdrag: en markering, ett fynd,
+ * en avvikelse eller en notering. Registreras med ett tryck i den
+ * operativa vyn och följer sedan med in i rapporten.
+ */
+model MissionEvent {
+  id           String   @id @default(cuid())
+  assignmentId String
+  assignment   MissionAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  kind         String // MARKING | FIND | DEVIATION | NOTE | OTHER
+  note         String?
+  at           DateTime @default(now())
+  createdById  String
+  createdBy    User     @relation("EventCreator", fields: [createdById], references: [id])
+
+  @@index([assignmentId])
 }
 
 model OperationalReport {

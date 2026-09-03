@@ -9,6 +9,7 @@ import { formatRelative } from "@/lib/format";
 import {
   andradeNycklar,
   getSettings,
+  NYCKLAR,
   RUBRIKER,
   type Settings,
 } from "@/lib/settings";
@@ -25,6 +26,8 @@ const BESKRIVNINGAR: Record<keyof Settings, string> = {
     "Förslagen i rutan Sökmiljö. Ett värde per rad; föraren kan fortfarande skriva något eget.",
   targetOdors: "Förslagen i rutan Måldoft. Ett värde per rad.",
   missionTypes: "Förslagen i rutan Uppdragstyp när ett uppdrag läggs upp.",
+  missionChecklist:
+    "Punkterna föraren bockar av i den operativa vyn under ett pågående uppdrag. Ett värde per rad.",
 };
 
 export default async function PanelSettingsPage() {
@@ -95,7 +98,7 @@ export default async function PanelSettingsPage() {
       user={admin}
       aktiv="/panel/installningar"
       title="Inställningar"
-      subtitle={`${andrade.size} av 5 inställningar avviker från standard`}
+      subtitle={`${andrade.size} av ${NYCKLAR.length} inställningar avviker från standard`}
     >
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <Ruta rubrik="Regioner" varde={regioner} />
@@ -126,6 +129,7 @@ export default async function PanelSettingsPage() {
               "searchEnvironments",
               "targetOdors",
               "missionTypes",
+              "missionChecklist",
             ] as const
           ).map((nyckel) => (
             <SettingForm

@@ -216,6 +216,46 @@ export const MISSION_TYPES = [
   "Beredskap",
 ];
 
+/**
+ * Checklistan som föraren bockar av under uppdraget. Standardvärde – går
+ * att ändra under Inställningar, som de andra listorna.
+ */
+export const MISSION_CHECKLIST = [
+  "Säkerhetsgenomgång",
+  "Utrustning kontrollerad",
+  "Områdessök påbörjat",
+  "Kommunikationskontroll",
+  "Avslutande sök",
+  "Rapport ifylld",
+];
+
+/** Händelser som registreras under pågående uppdrag. */
+export const EVENT_KINDS = [
+  "MARKING",
+  "FIND",
+  "DEVIATION",
+  "NOTE",
+  "OTHER",
+] as const;
+
+export type EventKind = (typeof EVENT_KINDS)[number];
+
+export const EVENT_LABELS: Record<string, string> = {
+  MARKING: "Markering",
+  FIND: "Fynd",
+  DEVIATION: "Avvikelse",
+  NOTE: "Notering",
+  OTHER: "Händelse",
+};
+
+/** Färgton per händelsetyp, så att listan går att läsa i en blick. */
+export function eventTone(kind: string) {
+  if (kind === "FIND") return "ok" as const;
+  if (kind === "DEVIATION") return "danger" as const;
+  if (kind === "MARKING") return "brand" as const;
+  return "neutral" as const;
+}
+
 /** Antal dagar före utgång då ett certifikat räknas som "snart utgånget". */
 export const CERT_WARNING_DAYS = 60;
 

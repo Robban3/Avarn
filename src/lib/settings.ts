@@ -3,6 +3,7 @@ import { cache } from "react";
 import { db } from "./db";
 import {
   CERT_WARNING_DAYS,
+  MISSION_CHECKLIST,
   MISSION_TYPES,
   SEARCH_ENVIRONMENTS,
   TARGET_ODORS,
@@ -25,6 +26,7 @@ export type Settings = {
   searchEnvironments: string[];
   targetOdors: string[];
   missionTypes: string[];
+  missionChecklist: string[];
 };
 
 /** Standardvärdena, som gäller tills något sparats över dem. */
@@ -34,6 +36,7 @@ export const STANDARD: Settings = {
   searchEnvironments: SEARCH_ENVIRONMENTS,
   targetOdors: TARGET_ODORS,
   missionTypes: MISSION_TYPES,
+  missionChecklist: MISSION_CHECKLIST,
 };
 
 export const NYCKLAR = Object.keys(STANDARD) as (keyof Settings)[];
@@ -45,6 +48,7 @@ export const RUBRIKER: Record<keyof Settings, string> = {
   searchEnvironments: "Sökmiljöer",
   targetOdors: "Måldofter",
   missionTypes: "Uppdragstyper",
+  missionChecklist: "Checklista under uppdrag",
 };
 
 /**
@@ -72,6 +76,7 @@ export const getSettings = cache(async (): Promise<Settings> => {
     searchEnvironments: las("searchEnvironments"),
     targetOdors: las("targetOdors"),
     missionTypes: las("missionTypes"),
+    missionChecklist: las("missionChecklist"),
   };
 });
 

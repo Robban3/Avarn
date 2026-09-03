@@ -150,7 +150,9 @@ export function ReportForm({
   return (
     <form id="rapport-form" action={formAction} className="space-y-4">
       <input type="hidden" name="missionId" value={mission.id} />
-      {initial ? (
+      {/* Bara vid rättelse. En ny rapport kan komma förifylld av det som
+          registrerades under uppdraget, men har ännu inget id. */}
+      {initial?.reportId ? (
         <input type="hidden" name="reportId" value={initial.reportId} />
       ) : null}
 

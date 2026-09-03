@@ -18,6 +18,7 @@ import {
   ClockIcon,
   FolderIcon,
   CheckCircleIcon,
+  CheckIcon,
   MapPinIcon,
   MessageIcon,
   RouteIcon,
@@ -37,6 +38,7 @@ import {
   listaFranText,
 } from "@/lib/format";
 import { MISSION_STATUS_LABELS, missionTone } from "@/lib/domain";
+import { getSettings } from "@/lib/settings";
 import { missionForUser } from "@/lib/queries";
 import { startMission } from "../../actions";
 
@@ -100,7 +102,14 @@ export default async function MissionDetailsPage({
   );
   const kanStarta =
     egenTilldelning !== undefined &&
+    !egenTilldelning.startedAt &&
     ["PLANNED", "ASSIGNED"].includes(mission.status);
+
+  // Checklistan är gemensam för uppdraget och bockas av i den operativa
+  // vyn; här visas bara hur långt ekipaget kommit.
+  const { missionChecklist: checklista } = await getSettings();
+  const avbockade = new Set(listaFranText(egenTilldelning?.checklistDone));
+  const klara = checklista.filter((p) => avbockade.has(p)).length;
 
   const datumkort = (
     <section className="card mb-4 flex items-center gap-3 p-4">
@@ -317,19 +326,49 @@ export default async function MissionDetailsPage({
       ) : null}
 
       {flik === "checklista" ? (
-        <EmptyState
-          icon={<CheckCircleIcon className="h-7 w-7" />}
-          title="Ingen checklista"
-          description="Det här uppdraget har ingen checklista upplagd. Särskilda instruktioner och krav finns på uppdragssidan."
-          action={
+        <section>
+          <p className="mb-3 text-sm text-fg-muted">
+            {klara} av {checklista.length} punkter avbockade. Punkterna
+            bockas av i den operativa vyn medan uppdraget pågår.
+          </p>
+          <ul className="card divide-y divide-line-soft">
+            {checklista.map((punkt) => {
+              const klar = avbockade.has(punkt);
+              return (
+                <li key={punkt} className="flex items-center gap-3 px-4 py-3">
+                  <span
+                    aria-hidden
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                      klar
+                        ? "border-brand bg-brand text-[#06201e]"
+                        : "border-line bg-surface-2 text-transparent"
+                    }`}
+                  >
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <span
+                    className={`flex-1 text-sm ${klar ? "text-fg-muted line-through" : "text-fg"}`}
+                  >
+                    {punkt}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {kanStarta ? (
+            <p className="mt-3 text-sm text-fg-dim">
+              Starta uppdraget under fliken Plats för att börja bocka av.
+            </p>
+          ) : null}
+          {egenTilldelning?.startedAt && !egenTilldelning.endedAt ? (
             <Link
-              href={`/uppdrag/${mission.id}`}
-              className="btn btn-secondary"
+              href={`/uppdrag/${mission.id}/pagaende`}
+              className="btn btn-primary mt-4 w-full"
             >
-              Till uppdraget
+              Öppna pågående uppdrag
             </Link>
-          }
-        />
+          ) : null}
+        </section>
       ) : null}
 
       {flik === "dokument" ? (

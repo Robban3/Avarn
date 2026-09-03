@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { MapPinIcon } from "./icons";
 
@@ -25,6 +25,7 @@ export function Karta({
   label,
   zoom = 15,
   className = "h-[220px]",
+  visaPosition = false,
 }: {
   lat: number;
   lng: number;
@@ -32,14 +33,23 @@ export function Karta({
   label: string;
   zoom?: number;
   className?: string;
+  /**
+   * Ritar även ut var föraren själv är, med telefonens positionstjänst.
+   * Positionen stannar i webbläsaren – den skickas aldrig till servern
+   * och sparas inte.
+   */
+  visaPosition?: boolean;
 }) {
   const rutan = useRef<HTMLDivElement>(null);
+  const [positionsfel, setPositionsfel] = useState<string | null>(null);
+  const [harPosition, setHarPosition] = useState(false);
 
   useEffect(() => {
     const element = rutan.current;
     if (!element) return;
 
     let karta: import("leaflet").Map | undefined;
+    let vakt: number | undefined;
     let avbruten = false;
 
     void import("leaflet").then((L) => {
@@ -71,24 +81,83 @@ export function Karta({
         iconAnchor: [9, 9],
       });
       L.marker([lat, lng], { icon: nal, title: label }).addTo(karta);
+
+      if (!visaPosition || !("geolocation" in navigator)) return;
+
+      // "Du är här". Positionen följs så länge vyn är öppen och lämnar
+      // aldrig webbläsaren; den ritas bara ut på kartan.
+      const egenIkon = L.divIcon({
+        className: "",
+        html: `<span style="display:block;width:14px;height:14px;border-radius:9999px;background:#5aa9e6;border:3px solid #0b0e0f;box-shadow:0 0 0 6px rgba(90,169,230,.25)"></span>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+      let egenNal: import("leaflet").Marker | undefined;
+
+      vakt = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (avbruten || !karta) return;
+          const punkt: [number, number] = [
+            pos.coords.latitude,
+            pos.coords.longitude,
+          ];
+          if (egenNal) egenNal.setLatLng(punkt);
+          else {
+            egenNal = L.marker(punkt, {
+              icon: egenIkon,
+              title: "Du är här",
+            }).addTo(karta);
+          }
+          setHarPosition(true);
+          setPositionsfel(null);
+        },
+        (fel) => {
+          if (avbruten) return;
+          setHarPosition(false);
+          setPositionsfel(
+            fel.code === fel.PERMISSION_DENIED
+              ? "Positionen är avstängd för appen."
+              : "Positionen går inte att hämta just nu.",
+          );
+        },
+        { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
+      );
     });
 
     return () => {
       avbruten = true;
+      if (vakt !== undefined) navigator.geolocation.clearWatch(vakt);
       karta?.remove();
     };
-  }, [lat, lng, zoom, label]);
+  }, [lat, lng, zoom, label, visaPosition]);
 
   return (
-    <div
-      ref={rutan}
-      role="img"
-      aria-label={`Karta över ${label}`}
-      // Bakgrunden sätts på elementet: Leaflets egen stilmall laddas efter
-      // vår och skulle annars lysa ljusgrå tills kartrutorna kommit fram.
-      style={{ backgroundColor: "var(--color-surface-2)" }}
-      className={`w-full overflow-hidden rounded-xl border border-line ${className}`}
-    />
+    <div>
+      <div
+        ref={rutan}
+        role="img"
+        aria-label={`Karta över ${label}`}
+        // Bakgrunden sätts på elementet: Leaflets egen stilmall laddas
+        // efter vår och skulle annars lysa ljusgrå tills kartrutorna kommit
+        // fram.
+        style={{ backgroundColor: "var(--color-surface-2)" }}
+        className={`w-full overflow-hidden rounded-xl border border-line ${className}`}
+      />
+      {visaPosition ? (
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-fg-dim">
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+              harPosition ? "bg-info" : "bg-fg-dim"
+            }`}
+          />
+          {positionsfel ??
+            (harPosition
+              ? "Din position visas i blått och stannar i telefonen."
+              : "Söker din position …")}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

@@ -10,6 +10,7 @@ import { teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { toLocalInput } from "@/lib/format";
 import { REPORT_STATUS_LABELS, reportTone } from "@/lib/domain";
+import { franHandelser } from "@/lib/handelser";
 import { createReport } from "../actions";
 import { ReportForm } from "./report-form";
 
@@ -130,6 +131,7 @@ export default async function NewReportPage({
     include: {
       mission: { include: { discipline: true, customer: true } },
       team: { include: { dog: true, handler: true } },
+      events: { orderBy: { at: "asc" } },
     },
   });
 
@@ -137,9 +139,15 @@ export default async function NewReportPage({
   const mission = assignments[0].mission;
 
   // Tryckte föraren "Starta uppdrag" är det den tiden som gäller, inte
-  // uppdragets planerade start.
-  const paborjat =
-    assignments.find((a) => a.startedAt)?.startedAt ?? mission.startAt;
+  // uppdragets planerade start. Samma sak i andra änden.
+  const egen = assignments.find((a) => a.startedAt) ?? assignments[0];
+  const paborjat = egen.startedAt ?? mission.startAt;
+  const avslutat = egen.endedAt ?? mission.endAt ?? mission.startAt;
+
+  // Det som registrerades under uppdraget förifyller rapporten. Poängen
+  // med snabbregistreringen är att slippa skriva samma sak två gånger:
+  // markeringarna blir rader, resten blir text i rätt fält.
+  const forifyllt = franHandelser(egen.events);
 
   return (
     <AppShell
@@ -178,8 +186,25 @@ export default async function NewReportPage({
         }))}
         defaults={{
           startedAt: toLocalInput(paborjat),
-          endedAt: toLocalInput(mission.endAt ?? mission.startAt),
+          endedAt: toLocalInput(avslutat),
         }}
+        initial={
+          forifyllt
+            ? {
+                reportId: "",
+                teamId: egen.teamId,
+                startedAt: toLocalInput(paborjat),
+                endedAt: toLocalInput(avslutat),
+                areasSearched: mission.missionArea ?? "",
+                areaSize: "",
+                findings: forifyllt.findings,
+                deviations: forifyllt.deviations,
+                actions: "",
+                comment: forifyllt.comment,
+                indications: forifyllt.indications,
+              }
+            : undefined
+        }
         genomfortAv={user.name}
         bilder={
           <p className="text-sm text-fg-muted">

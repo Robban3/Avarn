@@ -13,6 +13,7 @@ import {
   AlertIcon,
   CalendarIcon,
   ClipboardIcon,
+  ClockIcon,
   MapPinIcon,
   MessageIcon,
   PencilIcon,
@@ -91,6 +92,10 @@ export default async function MissionPage({
 
   const utrustning = listaFranText(mission.equipment);
   const detaljer = `/uppdrag/${mission.id}/detaljer`;
+
+  // Ett eget uppdrag som är påbörjat men inte avslutat har en operativ vy
+  // att gå tillbaka till.
+  const pagaende = myAccepted.some((a) => a.startedAt && !a.endedAt);
 
   return (
     <AppShell
@@ -397,6 +402,16 @@ export default async function MissionPage({
       </section>
 
       {/* Åtgärder */}
+      {pagaende ? (
+        <Link
+          href={`/uppdrag/${mission.id}/pagaende`}
+          className="btn btn-primary mb-3 w-full"
+        >
+          <ClockIcon className="h-[18px] w-[18px]" />
+          Öppna pågående uppdrag
+        </Link>
+      ) : null}
+
       {myReport ? (
         myReport.authorId === user.id && myReport.status !== "APPROVED" ? (
           <Link

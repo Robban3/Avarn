@@ -146,7 +146,7 @@ test("platsvyn visar rätt punkt och länkar vidare till kartappen", async ({
   ).toHaveAttribute("href", /query=59\.6498,17\.9239/);
 });
 
-test("checklista och dokument säger ärligt att de är tomma", async ({
+test("checklistan visas och dokumentfliken är ärligt tom", async ({
   page,
 }) => {
   await loggaIn(page, KONTON.hundforare);
@@ -154,9 +154,9 @@ test("checklista och dokument säger ärligt att de är tomma", async ({
   const uppdrag = page.url();
 
   await page.goto(`${uppdrag}/detaljer?flik=checklista`);
-  await expect(
-    page.getByText("Ingen checklista", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("0 av 6 punkter avbockade")).toBeVisible();
+  await expect(page.getByText("Säkerhetsgenomgång")).toBeVisible();
+  await expect(page.getByText("Rapport ifylld")).toBeVisible();
 
   await page.goto(`${uppdrag}/detaljer?flik=dokument`);
   await expect(page.getByText("Inga dokument", { exact: true })).toBeVisible();
@@ -169,8 +169,9 @@ test("föraren startar uppdraget, och kan inte starta det två gånger", async (
 
   await page.goto(`${uppdrag}/detaljer?flik=plats`);
   await page.getByRole("button", { name: "Starta uppdrag" }).click();
+  // Starten leder rakt in i den operativa vyn.
+  await page.waitForURL(/\/pagaende$/);
 
-  // Statusen syns på uppdragssidan och i översikten, inte på platsfliken.
   await page.goto(uppdrag);
   await expect(page.getByText("Pågående").first()).toBeVisible();
 

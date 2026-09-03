@@ -7,7 +7,9 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan, regionScope, teamScope } from "@/lib/authz";
 import { audit } from "@/lib/audit";
-import { fromLocalInput, parseKoordinater } from "@/lib/format";
+import { fromLocalInput, listaFranText, parseKoordinater } from "@/lib/format";
+import { EVENT_KINDS, type EventKind } from "@/lib/domain";
+import type { SessionUser } from "@/lib/session";
 import { notify } from "@/lib/notify";
 
 /** Server actions för uppdrag: skapa, tilldela och svara. */
@@ -277,6 +279,171 @@ export async function startMission(formData: FormData) {
   revalidatePath(`/uppdrag/${missionId}/detaljer`);
   revalidatePath("/uppdrag");
   revalidatePath("/hem");
+
+  // Vidare in i den operativa vyn: föraren tryckte start för att komma i
+  // gång, inte för att stanna kvar på samma sida.
+  redirect(`/uppdrag/${missionId}/pagaende`);
+}
+
+/**
+ * Tilldelningen som hör till den inloggade föraren på ett pågående
+ * uppdrag, med allt den operativa vyn ändrar.
+ *
+ * Alla handlingar i vyn går genom den här: kravet är att uppdraget är
+ * ens eget, accepterat, påbörjat och inte avslutat. Ligger avgränsningen
+ * i frågan kan inget id som skickas med i formuläret nå någon annans
+ * uppdrag.
+ */
+async function egetPagaendeUppdrag(user: SessionUser, missionId: string) {
+  const assignment = await db.missionAssignment.findFirst({
+    where: {
+      missionId,
+      status: "ACCEPTED",
+      startedAt: { not: null },
+      endedAt: null,
+      team: { AND: [teamScope(user), { handlerId: user.id }] },
+    },
+    select: {
+      id: true,
+      missionId: true,
+      progressPercent: true,
+      checklistDone: true,
+    },
+  });
+  if (!assignment) {
+    throw new Error("Du har inget pågående uppdrag här.");
+  }
+  return assignment;
+}
+
+/** Sidorna som visar ett pågående uppdrag, efter en ändring. */
+function uppdateraPagaende(missionId: string) {
+  revalidatePath(`/uppdrag/${missionId}/pagaende`);
+  revalidatePath(`/uppdrag/${missionId}/detaljer`);
+  revalidatePath(`/uppdrag/${missionId}`);
+  revalidatePath("/hem");
+}
+
+/**
+ * Registrerar en händelse under pågående uppdrag – en markering, ett
+ * fynd, en avvikelse eller en notering.
+ *
+ * Ett tryck ska räcka. Texten är därför frivillig: hinner föraren inte
+ * skriva något är tidpunkten och typen ändå kvar, och kan fyllas på i
+ * rapporten efteråt.
+ */
+export async function registerMissionEvent(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const kind = String(formData.get("kind") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!EVENT_KINDS.includes(kind as EventKind)) {
+    throw new Error("Okänd händelsetyp.");
+  }
+
+  const assignment = await egetPagaendeUppdrag(user, missionId);
+
+  await db.missionEvent.create({
+    data: {
+      assignmentId: assignment.id,
+      kind,
+      note: note.slice(0, 1000) || null,
+      createdById: user.id,
+    },
+  });
+
+  uppdateraPagaende(missionId);
+}
+
+/** Tar bort en felregistrerad händelse. */
+export async function removeMissionEvent(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const eventId = String(formData.get("eventId") ?? "");
+
+  const assignment = await egetPagaendeUppdrag(user, missionId);
+
+  // Händelsen måste höra till den egna tilldelningen – annars skulle ett
+  // främmande id kunna raderas genom att skickas med i formuläret.
+  await db.missionEvent.deleteMany({
+    where: { id: eventId, assignmentId: assignment.id },
+  });
+
+  uppdateraPagaende(missionId);
+}
+
+/** Bockar av eller ångrar en punkt i checklistan. */
+export async function toggleChecklistItem(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const punkt = String(formData.get("punkt") ?? "").trim();
+  if (!punkt) return;
+
+  const assignment = await egetPagaendeUppdrag(user, missionId);
+
+  const avbockade = new Set(listaFranText(assignment.checklistDone));
+  if (avbockade.has(punkt)) avbockade.delete(punkt);
+  else avbockade.add(punkt);
+
+  await db.missionAssignment.update({
+    where: { id: assignment.id },
+    data: { checklistDone: [...avbockade].join("\n") || null },
+  });
+
+  uppdateraPagaende(missionId);
+}
+
+/**
+ * Ändrar hur stor del av området som är genomsökt.
+ *
+ * Steget kommer från knappen och andelen är förarens egen bedömning –
+ * appen har inget sätt att mäta den, och ska inte låtsas att den har det.
+ */
+export async function setMissionProgress(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+  const steg = Number(formData.get("steg") ?? 0);
+  if (!Number.isFinite(steg)) return;
+
+  const assignment = await egetPagaendeUppdrag(user, missionId);
+  const nytt = Math.min(100, Math.max(0, assignment.progressPercent + steg));
+
+  await db.missionAssignment.update({
+    where: { id: assignment.id },
+    data: { progressPercent: nytt },
+  });
+
+  uppdateraPagaende(missionId);
+}
+
+/**
+ * Avslutar förarens arbete på plats och skickar vidare till rapporten.
+ *
+ * Uppdragets status rörs inte: den sätts till avslutat först när
+ * rapporten är godkänd, och det är inte förarens beslut.
+ */
+export async function endMission(formData: FormData) {
+  const user = await requireUser();
+  const missionId = String(formData.get("missionId") ?? "");
+
+  const assignment = await egetPagaendeUppdrag(user, missionId);
+
+  await db.missionAssignment.update({
+    where: { id: assignment.id },
+    data: { endedAt: new Date() },
+  });
+
+  await audit({
+    userId: user.id,
+    action: "UPDATE",
+    entityType: "Mission",
+    entityId: missionId,
+    detail: "Uppdrag avslutat på plats",
+  });
+
+  uppdateraPagaende(missionId);
+  redirect(`/rapporter/nytt?uppdrag=${missionId}`);
 }
 
 /** Tilldelar ett ekipage. Ekipaget måste ligga inom tilldelarens behörighet. */
