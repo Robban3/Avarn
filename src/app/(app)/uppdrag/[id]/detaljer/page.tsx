@@ -34,6 +34,7 @@ import {
 } from "@/components/icons";
 import {
   LaggTillBilaga,
+  Forhamtade,
   OfflineMarkering,
   TaBortDokument,
 } from "@/components/Dokument";
@@ -138,6 +139,14 @@ export default async function MissionDetailsPage({
 
   const underlag = dokument.filter((d) => d.missionSource !== "ATTACHMENT");
   const bilagor = dokument.filter((d) => d.missionSource === "ATTACHMENT");
+
+  // Vad som ska hämtas hem till telefonen i förväg. Filmer lämnas därhän:
+  // en bilaga kan vara 25 MB, och ingen ska ladda ner den på mobildata
+  // utan att ha bett om det. De hämtas när föraren öppnar dem.
+  const forhamtas = dokument
+    .filter((d) => d.kind !== "VIDEO")
+    .map((d) => `/api/media/${d.id}`);
+  const filmer = dokument.length - forhamtas.length;
   const hrefFor = (value: string) =>
     value === "oversikt"
       ? `/uppdrag/${mission.id}/detaljer`
@@ -435,6 +444,8 @@ export default async function MissionDetailsPage({
 
       {flik === "dokument" ? (
         <section>
+          <Forhamtade urler={forhamtas} filmer={filmer} />
+
           <div className="mb-2.5 flex items-center justify-between">
             <h2 className="section-label">Från uppdragsgivaren</h2>
           </div>

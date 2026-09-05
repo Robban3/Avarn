@@ -1,8 +1,23 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useFormStatus } from "react-dom";
 import { PlusIcon, TrashIcon } from "./icons";
+import {
+  arCachad,
+  cacheversion,
+  forhamta,
+  hamtarNu,
+  prenumereraCache,
+  prova,
+  serverCacheversion,
+} from "@/lib/dokumentcache";
 import {
   removeMissionDocument,
   uploadMissionDocument,
@@ -11,10 +26,20 @@ import {
 
 /**
  * De delar av dokumentfliken som behöver ett eget läge i webbläsaren:
- * filväljaren, och beskedet om en fil finns kvar i telefonen.
+ * filväljaren, förhämtningen till telefonen, och beskedet om en fil finns
+ * kvar där.
  */
 
 /* --------------------------------------------------------- Offline-status */
+
+/** Ritar om när något lagts i cachen eller en hämtning börjat eller slutat. */
+function useCacheversion() {
+  return useSyncExternalStore(
+    prenumereraCache,
+    cacheversion,
+    serverCacheversion,
+  );
+}
 
 /**
  * "Tillgänglig offline" – men bara när det är sant.
@@ -23,36 +48,127 @@ import {
  * Ett dokument som kräver uppkoppling får ingen status alls; frånvaron är
  * beskedet, och en text som lovar offline när filen inte finns i telefonen
  * är värre än ingen text i en bagagehall utan täckning.
- *
- * Ingenting fyller cachen ännu – det gör servicearbetaren i offline-steget.
- * Fram till dess visar den här raden med rätta ingenting.
  */
 export function OfflineMarkering({ url }: { url: string }) {
-  const [cachad, setCachad] = useState(false);
+  useCacheversion();
 
+  // Avläsningen är asynkron och svaret hamnar i den delade lagringen, som
+  // ritar om alla rader som väntar på det. Därför inget eget tillstånd.
   useEffect(() => {
-    let avbruten = false;
-    // caches saknas i osäkra sammanhang och i äldre webbläsare; då är
-    // svaret "vet inte", vilket visas som ingen status.
-    if (typeof caches === "undefined") return;
-    caches
-      .match(url)
-      .then((svar) => {
-        if (!avbruten && svar) setCachad(true);
-      })
-      .catch(() => {});
-    return () => {
-      avbruten = true;
-    };
+    prova(url);
   }, [url]);
 
-  if (!cachad) return null;
+  if (!arCachad(url)) return null;
 
   return (
     <span className="mt-[3px] flex items-center gap-1.5 text-[11px] text-fg-dim">
       <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-ok" />
       Tillgänglig offline
     </span>
+  );
+}
+
+/* ------------------------------------------------------------ Förhämtning */
+
+/**
+ * Uppkopplingen. Samma avvägning som i Offline.tsx: webbläsarens
+ * online-händelser kommer sent eller inte alls i en telefon som tappar
+ * täckning, så flaggan frågas också med jämna mellanrum. Här räcker det
+ * med var femte sekund – en hämtning som börjar några sekunder sent
+ * märks inte, till skillnad från en statusrad som ljuger.
+ */
+const prenumereraNat = (vid: () => void) => {
+  window.addEventListener("online", vid);
+  window.addEventListener("offline", vid);
+  const id = setInterval(vid, 5000);
+  return () => {
+    window.removeEventListener("online", vid);
+    window.removeEventListener("offline", vid);
+    clearInterval(id);
+  };
+};
+
+/**
+ * Hämtar hem uppdragets dokument så snart fliken öppnas.
+ *
+ * Poängen med hela dokumentfliken är att underlaget ska finnas där
+ * täckningen inte gör det. Att vänta på att föraren öppnar varje fil är
+ * att lita på att hen gör det medan hen fortfarande har nät – och det är
+ * precis det man inte tänker på förrän det är för sent.
+ *
+ * Raden visar vad som faktiskt ligger i telefonen. Den räknar bara de
+ * filer som hämtas hem; filmer lämnas därhän, eftersom en bilaga kan vara
+ * 25 MB och ingen ska ladda ner den på mobildata utan att ha bett om det.
+ */
+export function Forhamtade({
+  urler,
+  filmer = 0,
+}: {
+  /** Adresserna som ska finnas i telefonen. */
+  urler: string[];
+  /** Antal filmer som hoppas över, för textens skull. */
+  filmer?: number;
+}) {
+  useCacheversion();
+  const uppkopplad = useSyncExternalStore(
+    prenumereraNat,
+    () => navigator.onLine,
+    () => true,
+  );
+
+  // Hämtningen startas efter renderingen och görs om när uppkopplingen
+  // kommer tillbaka.
+  //
+  // Effekten hänger på adresserna som en sträng och inte på listan:
+  // `urler` är ett nytt fält vid varje rendering, och statusraden ritar om
+  // sig varje gång en fil kommit fram – med listan som beroende hade
+  // hämtningen startats om vid varje sådan omritning.
+  const nyckel = urler.join(" ");
+  useEffect(() => {
+    if (!uppkopplad || !nyckel) return;
+    void forhamta(nyckel.split(" "));
+  }, [nyckel, uppkopplad]);
+
+  if (urler.length === 0) return null;
+
+  const klara = urler.filter(arCachad).length;
+  const alla = klara === urler.length;
+  const hamtar = hamtarNu() > 0;
+
+  const text = hamtar
+    ? `Hämtar dokument till telefonen … (${klara} av ${urler.length})`
+    : alla
+      ? urler.length === 1
+        ? "Dokumentet finns i telefonen"
+        : `Alla ${urler.length} dokument finns i telefonen`
+      : uppkopplad
+        ? `${klara} av ${urler.length} dokument finns i telefonen`
+        : `${klara} av ${urler.length} dokument finns i telefonen – resten hämtas när du har täckning`;
+
+  return (
+    <p
+      role="status"
+      className={`mb-3 flex items-center gap-2 text-[11px] ${
+        alla ? "text-ok" : "text-fg-dim"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+          alla ? "bg-ok" : hamtar ? "bg-info" : "bg-fg-dim"
+        }`}
+      />
+      <span>
+        {text}
+        {filmer > 0 ? (
+          <>
+            {". "}
+            {filmer === 1 ? "Filmen hämtas" : "Filmer hämtas"} när du öppnar{" "}
+            {filmer === 1 ? "den" : "dem"}.
+          </>
+        ) : null}
+      </span>
+    </p>
   );
 }
 

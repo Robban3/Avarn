@@ -53,19 +53,27 @@ export function formatDateTime(d: Date) {
 }
 
 /**
+ * Formaterarna ligger som modulkonstanter och byggs inte per anrop.
+ * `new Intl.DateTimeFormat(...)` är dyrt – den slår upp lokal och tidszon –
+ * och de här två är de hetaste i appen: kalenderns veckovy anropar
+ * `toLocalInput` för varje händelse och varje dygnsgräns den ritar.
+ */
+const localInputFmt = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/**
  * "2026-08-31T08:00" i svensk tid, som ett datetime-local-fält vill ha det.
  * Servern renderar i UTC, så tidszonen måste anges uttryckligen.
  */
 export function toLocalInput(date: Date) {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Stockholm",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
+  const parts = localInputFmt.formatToParts(date);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
@@ -149,18 +157,20 @@ export const startOfDay = (nyckel: string) => fromLocalInput(`${nyckel}T00:00`);
 
 /* -------------------------------------------------------------------------- */
 
+const offsetFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
 /** Hur långt före eller efter UTC svensk tid låg vid en viss tidpunkt. */
 function offsetMs(instant: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(instant);
+  const parts = offsetFmt.formatToParts(instant);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
   const wallAsUtc = Date.UTC(
     get("year"),

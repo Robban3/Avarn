@@ -19,7 +19,8 @@
     "db:setup": "prisma migrate deploy && prisma generate && npm run seed",
     "db:sql": "node scripts/generate-supabase-sql.mjs",
     "db:sql:migrations": "node scripts/generate-supabase-migration-sql.mjs",
-    "map": "node scripts/generate-sweden-map.mjs"
+    "map": "node scripts/generate-sweden-map.mjs",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -49,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "prisma": "7.10.0",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",

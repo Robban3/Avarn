@@ -83,6 +83,17 @@ function meddela() {
 }
 
 export async function laggIKo(post: Omit<Kopost, "id" | "skapad">) {
+  // Räknaren höjs synkront, innan skrivningen till IndexedDB hunnit klart.
+  //
+  // Annars finns ett glapp mellan trycket och att kön känns vid posten: en
+  // förare som bockar av något offline ser "registreringar sparas i
+  // telefonen" utan siffra, och statusraden kan hinna säga att allt är
+  // synkroniserat innan den ens vet att det ligger något nytt där. Ett
+  // tryck som tagit ska räknas från samma ögonblick det tog.
+  langd += 1;
+  laddad = true;
+  meddela();
+
   await medButik("readwrite", (butik) =>
     butik.add({ ...post, skapad: Date.now() }),
   );

@@ -16,6 +16,16 @@ export const metadata: Metadata = {
   description:
     "Operativt stöd för Avarn Securitys hundförare, instruktörer och ledning.",
   manifest: "/manifest.webmanifest",
+  // SVG duger i webbläsarfliken, men iOS läser bara PNG när appen läggs på
+  // hemskärmen. Utan apple-touch-icon klipper Safari ut en miniatyr av
+  // sidan i stället, och ikonen blir en suddig bild av sidhuvudet.
+  icons: {
+    icon: [
+      { url: "/ikon.svg", type: "image/svg+xml" },
+      { url: "/ikon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

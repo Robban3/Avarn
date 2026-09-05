@@ -172,6 +172,35 @@ test("en förare i en annan region når varken fliken eller filen", async ({
   expect(filsvar.status()).toBe(404);
 });
 
+test("dokumenten hämtas hem utan att föraren öppnar dem", async ({ page }) => {
+  const uppdrag = await uppdragMedForare(page, `Dok offline ${Date.now()}`);
+
+  await page.goto(`${uppdrag}/detaljer?flik=dokument`);
+  await page
+    .getByRole("button", { name: /Lägg upp underlag|Lägg till/ })
+    .first()
+    .click();
+  await page.setInputFiles('input[name="fil"]', BILD);
+  await page.getByRole("button", { name: "Lägg till", exact: true }).click();
+  await expect(fil(page)).toBeVisible();
+
+  await loggaIn(page, KONTON.hundforare);
+  await page.goto(`${uppdrag}/detaljer?flik=dokument`);
+
+  // Det här är hela poängen: filen ska hamna i telefonen av sig själv.
+  // Provet öppnar den aldrig.
+  await expect(page.getByText("Dokumentet finns i telefonen")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText("Tillgänglig offline")).toBeVisible();
+
+  // Och den ligger kvar när täckningen tar slut.
+  await page.context().setOffline(true);
+  await page.reload();
+  await expect(fil(page)).toBeVisible({ timeout: 15_000 });
+  await page.context().setOffline(false);
+});
+
 test("behörigheterna uppdraget kräver listas i fliken", async ({ page }) => {
   const uppdrag = await uppdragMedForare(page, `Dok cert ${Date.now()}`);
 

@@ -146,13 +146,13 @@ src/
       cron/paminnelser/   Schemalagda certifikatpåminnelser.
       media/[id]/         Utlämning av bilagor, efter behörighetskontroll.
     login/  nekad/  layout.tsx  globals.css
-  components/       23 komponenter. ui.tsx är biblioteket.
-  lib/              29 moduler. Domänlogik och databasfrågor.
+  components/       26 komponenter. ui.tsx är biblioteket.
+  lib/              26 moduler. Domänlogik och databasfrågor.
   generated/prisma/ Genererad Prisma-klient. Granskas inte av ESLint.
 prisma/             schema.prisma, migrations/, seed.ts, supabase-SQL.
-e2e/                Playwright, 90 prov i 14 filer.
+e2e/                Playwright, 91 prov i 14 filer.
 public/             sw.js, manifest, ikoner.
-scripts/            Fyra hjälpskript, se kapitel 10.
+scripts/            Fem hjälpskript, se kapitel 10.
 data/               Länsgeometrin till Sverigekartan, med källhänvisning.
 ```
 
@@ -161,6 +161,12 @@ Ren logik ligger i egna moduler utan databasberoende – `kalender.ts`,
 `format.ts` – just för att den ska gå att prova med enhetsprov. Modulerna
 som bara får köras på servern börjar med `import "server-only"`, vilket är
 skälet till att `bokstavligt()` bor i `fritext.ts` och inte i `sok.ts`.
+
+Datumformaterarna i `format.ts` ligger som modulkonstanter och byggs aldrig
+per anrop. `new Intl.DateTimeFormat(...)` slår upp lokal och tidszon och är
+runt fjorton gånger dyrare än att återanvända en färdig formaterare – och
+kalenderns veckovy anropar `toLocalInput` för varje händelse och varje
+dygnsgräns den ritar.
 
 ### Databasanslutningen
 
@@ -519,12 +525,13 @@ Menyn ligger i `src/components/AdminShell.tsx`, i två grupper.
 nationellt ansvarig samt administratör. Hundföraren skickas till `/nekad` –
 hen har mobilappen.
 
-### API-vägarna
+### Rutter som svarar med något annat än en sida
 
 | Rutt | Vad den gör |
 | --- | --- |
 | `GET /api/media/[id]` | Lämnar ut en bilaga efter `canAccessMedia`. Enda vägen till uppladdade filer. |
 | `POST /api/cron/paminnelser` | Skapar påminnelser om certifikat som snart går ut. Autentiserar med `CRON_KEY`, inte med session. |
+| `GET /uppdrag/[id]/kalender` | Uppdraget som en `.ics`-fil, så att "Lägg till i kalender" gör något på riktigt. Samma avgränsning som uppdragssidan (`missionForUser`). |
 
 ### Inställningarna
 
@@ -611,16 +618,40 @@ i kön, och en gång vid start för det som köades innan appen stängdes. Efter
 en lyckad omgång anropas `router.refresh()`, annars står räknarna kvar på
 noll trots att markeringarna kommit fram.
 
-Tre spärrar:
+`Synkare` är mounterad i `(app)/layout.tsx` och inte i en enskild vy, så att
+kön töms var man än befinner sig i appen. Låg synkningen i statusraden
+tömdes kön bara på de två sidor som visar den – en förare som bockade av en
+punkt och gick vidare till startsidan fick sin bock liggande i telefonen
+tills hen råkade tillbaka. Statusraden mounterar samma synkare; spärren
+nedan gör att bara den ena faktiskt arbetar.
 
-- **En synkning i taget** (`pagar`-flaggan). Kön krymper medan den töms och
-  varje ändring väcker effekten igen; utan spärren hade en andra omgång
-  hunnit skicka en post som den första redan skickat men inte hunnit stryka.
+Fyra spärrar:
+
+- **En synkning i taget** (`pagar`). Kön krymper medan den töms och varje
+  ändring väcker effekten igen; utan spärren hade en andra omgång hunnit
+  skicka en post som den första redan skickat men inte hunnit stryka.
+- **Spärren sätts synkront, före första `await`.** Låg den efter
+  `hamtaKo()` hann två anrop passera innan någon av dem satt den, och båda
+  skickade sedan samtidigt. Checklistan läser sitt gamla värde, lägger till
+  sin punkt och skriver tillbaka hela listan – två sådana skrivningar på en
+  gång gör att den ena tappas bort. Flaggan ligger i modulen och inte i en
+  `ref`, eftersom två mounterade komponenter annars inte vet om varandra.
 - **Misslyckade poster ligger kvar** och prövas igen. En registrering ska
   aldrig försvinna för att nätet svajade.
 - **Men de får inte blockera.** Efter `MAX_FORSOK` (5) misslyckanden i rad
   hoppas posten över så att det som ligger bakom kommer fram. Den ligger
   kvar och räknas fortfarande.
+
+Kön läses dessutom om efter varje varv. En registrering som gjordes medan
+omgången pågick låg inte med när den började, och utan omläsningen hade den
+blivit kvar tills något annat råkade ändra kön.
+
+**Köräknaren höjs synkront** i `laggIKo`, innan skrivningen till IndexedDB
+hunnit klart. Annars fanns ett glapp mellan trycket och att kön kändes vid
+posten: föraren såg "registreringar sparas i telefonen" utan siffra, och
+statusraden kunde hinna säga att allt var synkroniserat innan den ens visste
+att det låg något nytt där. Ett tryck som tagit ska räknas från samma
+ögonblick det tog.
 
 ### Statusraden
 
@@ -650,6 +681,28 @@ den trycker man på igen. Det egna värdet adopterar serverns **bara när kön
 är tom** – annars hade två snabba tryck hoppat tillbaka ett steg när det
 första svaret kom.
 
+### Förhämtade dokument
+
+Uppdragets underlag hämtas hem så snart dokumentfliken öppnas
+(`src/lib/dokumentcache.ts`). Att vänta på att föraren öppnar varje fil
+vore att lita på att hen gör det medan hen fortfarande har nät – och det är
+precis det man inte tänker på förrän det är för sent.
+
+Filerna läggs i samma cache som servicearbetaren använder, så att de lämnas
+ut därifrån när nätet är borta och töms tillsammans med resten vid
+sessionsgränsen. En fil i taget, inte alla parallellt: på en svag uppkoppling
+gör sex samtidiga hämtningar varje enskild långsammare utan att någon blir
+klar tidigare.
+
+`Forhamtade` visar vad som faktiskt ligger i telefonen, och
+`OfflineMarkering` sätter "Tillgänglig offline" på de rader det gäller.
+Statusen läses ur webbläsarens cache och inte ur databasen, så den kan
+aldrig lova något som inte är sant.
+
+**Filmer hämtas inte automatiskt.** En bilaga kan vara 25 MB, och ingen ska
+ladda ner den på mobildata utan att ha bett om det. De cachas när föraren
+öppnar dem, och raden säger det.
+
 ### Vad som inte fungerar offline
 
 Medvetet utelämnat, eftersom det inte går att göra ärligt:
@@ -657,10 +710,6 @@ Medvetet utelämnat, eftersom det inte går att göra ärligt:
 - **Avsluta uppdrag** – bekräftar ett slutläge som kräver serversvar.
 - **Ladda upp dokument och bilder** – filer köas inte.
 - **Skriva rapport** – ett formulär med många fält, inte en knapptryckning.
-- **Dokument är inte förhämtade.** "Tillgänglig offline" visas bara för
-  filer föraren själv öppnat medan hen hade täckning; statusen läses ur
-  webbläsarens cache och inte ur databasen, så den ljuger aldrig – men
-  löftet är inte hållet förrän filerna hämtas i förväg.
 
 ---
 
@@ -721,6 +770,29 @@ hur profilen glider isär. Behövs något som inte finns läggs det till i
   På större skärmar breddas ytan men strukturen är densamma – mobilen
   förblir det som styr designen.
 
+### Väntan och fel
+
+`src/components/Skelett.tsx` ritar ramen medan en sida hämtas: sidhuvudet,
+kortens höjd och flikraden ligger där de kommer att ligga, så att sidan inte
+hoppar när innehållet kommer. Pulsen står stilla för den som bett om mindre
+rörelse i systemet.
+
+**En `loading.tsx` får bara ligga på segment som varken själva eller i något
+underliggande segment kastar `notFound()`.** Den gör att svaret börjar
+strömma direkt med statuskod 200, och ett `notFound()` som kastas efteråt
+hinner då inte längre sätta 404. De tolv sidor som kastar `notFound()` gör
+det för att en post ligger utanför behörigheten, och 404 i stället för
+"nekad" är just det som gör att id:n inte går att räkna upp. Listvyerna –
+`/hundar`, `/uppdrag`, `/traning`, `/rapporter` – har alla en `[id]`-sida
+under sig och har därför ingen.
+
+`src/components/Felvy.tsx` är felgränsen bakom `app/error.tsx`,
+`(app)/error.tsx` och `(app)/panel/error.tsx`: rubrik, förklaring, felkod
+att söka på i loggen, och två knappar – rita om vyn eller ta sig därifrån.
+`app/global-error.tsx` är sista utvägen när rotlayouten själv gick sönder;
+den skriver sina färger som hexvärden, eftersom en trasig layout ofta
+betyder att stilmallen också saknas.
+
 ### Ikoner och logotyp
 
 Ikonerna är egna SVG-komponenter i `src/components/icons.tsx`, inget
@@ -728,11 +800,31 @@ ikonbibliotek. Logotypen ritas som SVG i
 `src/components/AvarnLogo.tsx` och används även som appikon; ligger den
 officiella filen i `public/` kan komponenten peka på den i stället.
 
-### PWA
+### PWA och appikonen
 
 `public/manifest.webmanifest`: `standalone`, stående, start på `/hem`,
-bakgrund och temafärg `#0b0e0f`, svenska. Ikonerna är SVG – en vanlig och
-en maskable.
+bakgrund och temafärg `#0b0e0f`, svenska.
+
+Ikonerna finns både som SVG och PNG. SVG räcker för webbläsarfliken och för
+Android, men **iOS läser bara PNG** när appen läggs på hemskärmen – utan
+`apple-touch-icon.png` klipper Safari ut en miniatyr av sidan i stället, och
+ikonen blir en suddig bild av sidhuvudet.
+
+| Fil | Storlek | Till |
+| --- | --- | --- |
+| `apple-touch-icon.png` | 180 | iOS hemskärm |
+| `ikon-192.png` | 192 | manifestets mindre ikon |
+| `ikon-512.png` | 512 | manifestets stora, installationsdialogen |
+| `ikon-maskable-512.png` | 512 | Androids adaptiva ikon |
+
+PNG:erna är **genererade ur SVG-filerna** och ska aldrig rättas för hand.
+Ändras profilen körs `npm run icons` om
+(`scripts/generate-icons.mjs`, som använder sharp).
+
+Apple-ikonen är den enda som görs fyrkantig: iOS rundar hörnen själv, och en
+redan rundad ikon blir rundad två gånger med en mörk sarg utanför
+rundningen. Skriptet fyller därför de genomskinliga hörnen med
+bakgrundsfärgen.
 
 ### Bilder på hundar och personal
 
@@ -881,7 +973,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test` | Vitest – 91 enhetsprov i 5 filer. |
-| `npm run test:e2e` | Playwright – 90 prov i 14 filer. |
+| `npm run test:e2e` | Playwright – 91 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |
 | `npm run seed` | Lägger in exempeldata på nytt. |
@@ -890,6 +982,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run db:sql:migrations` | Genererar om filerna i `prisma/supabase/`. |
 | `npm run setup` | Skapar `.env`. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
+| `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
 
 ### Enhetsproven
 

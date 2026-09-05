@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -74,6 +72,165 @@ function useKolangd() {
   return useSyncExternalStore(prenumereraKo, koLangd, serverKoLangd);
 }
 
+/* ------------------------------------------------------------- Synkaren */
+
+/**
+ * Synkningen ligger i modulen och inte i en komponent.
+ *
+ * Två skäl. Spärren mot dubbla omgångar måste gälla hela sidan och inte
+ * en enskild komponent: statusraden och den osynliga synkaren i layouten
+ * är mounterade samtidigt, och två refs hade inte vetat om varandra. Och
+ * lägena – pågår, nyss klart – hör till kön och inte till den som råkar
+ * rita dem, så att statusraden visar rätt även när det var någon annan
+ * som gjorde arbetet.
+ */
+const SYNKHANDELSE = "avarn:synk";
+
+let pagar = false;
+let synkarNu = false;
+let nyssKlartNu = false;
+let synkversion = 0;
+
+function meddelaSynk() {
+  synkversion += 1;
+  window.dispatchEvent(new Event(SYNKHANDELSE));
+}
+
+const prenumereraSynk = (vid: () => void) => {
+  window.addEventListener(SYNKHANDELSE, vid);
+  return () => window.removeEventListener(SYNKHANDELSE, vid);
+};
+
+const lasSynkversion = () => synkversion;
+const serverSynkversion = () => 0;
+
+/**
+ * Tömmer kön.
+ *
+ * Spärren sätts synkront, före första await. Låg den efter hamtaKo() gick
+ * två anrop förbi den innan någon av dem hunnit sätta den, och båda
+ * skickade sedan sina poster samtidigt. Checklistan läser sitt gamla
+ * värde, lägger till sin punkt och skriver tillbaka hela listan – två
+ * sådana skrivningar på en gång gör att den ena tappas bort. Föraren såg
+ * sin bock, men den kom aldrig fram.
+ */
+async function synka(vidKlart: () => void) {
+  if (pagar) return;
+  pagar = true;
+
+  let nagotKomFram = false;
+  try {
+    // Kön läses om efter varje varv. En registrering som gjordes medan
+    // omgången pågick låg inte med när den började, och utan det här
+    // varvet hade den blivit kvar tills något annat råkade ändra kön.
+    let fortsatt = true;
+    while (fortsatt) {
+      fortsatt = false;
+      const poster = await hamtaKo();
+      if (poster.length === 0) break;
+
+      if (!synkarNu) {
+        synkarNu = true;
+        meddelaSynk();
+      }
+
+      for (const post of poster) {
+        const data = new FormData();
+        for (const [namn, varde] of post.falt) data.append(namn, varde);
+        try {
+          if (post.typ === "handelse") await registerMissionEvent(data);
+          if (post.typ === "checklista") await setChecklistItem(data);
+          if (post.typ === "framdrift") await setMissionProgress(data);
+          if (post.id !== undefined) await taBortUrKo(post.id);
+          nagotKomFram = true;
+          fortsatt = true;
+        } catch {
+          // Kommer den inte fram får den ligga kvar och prövas igen. En
+          // registrering ska aldrig försvinna för att nätet svajade.
+          //
+          // Men den får inte stå i vägen för resten heller. Misslyckas
+          // den flera gånger i rad är det inte nätet det hänger på, och
+          // då hoppas den över så att det som ligger bakom kommer fram.
+          // Posten ligger kvar och räknas fortfarande.
+          if (post.id !== undefined) await raknaForsok(post.id);
+          if ((post.forsok ?? 0) + 1 < MAX_FORSOK) {
+            // Nätet är borta. Vänta på nästa signal i stället för att
+            // mala vidare på en kö som ändå inte går att tömma.
+            fortsatt = false;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!nagotKomFram) return;
+
+    // Servern har fått registreringarna, men sidan visar fortfarande det
+    // den renderades med. Utan en omritning står räknarna kvar på noll
+    // trots att markeringarna kommit fram.
+    vidKlart();
+    nyssKlartNu = true;
+  } finally {
+    pagar = false;
+    synkarNu = false;
+    meddelaSynk();
+  }
+}
+
+/**
+ * Startar synkningen när det finns uppkoppling och något i kön, och
+ * håller kvitto-lägets livslängd.
+ *
+ * Delas av statusraden och den osynliga synkaren i layouten. Är båda
+ * mounterade gör spärren i `synka` att bara den ena faktiskt arbetar –
+ * den andra läser samma lägen och visar samma sak.
+ */
+function useSynkare() {
+  const router = useRouter();
+  const uppkopplad = useUppkopplad();
+  const kolangd = useKolangd();
+  useSyncExternalStore(prenumereraSynk, lasSynkversion, serverSynkversion);
+
+  // Kön töms så snart det finns uppkoppling och något i den: när nätet
+  // kommer tillbaka, när en ny registrering läggs i kön, och en gång vid
+  // start för det som köades innan appen stängdes.
+  //
+  // Synkningen startas efter renderingen och inte i den: den sätter
+  // tillstånd, och det ska inte ske mitt i samma målning som just
+  // upptäckte att det finns något att skicka.
+  useEffect(() => {
+    if (!uppkopplad || kolangd === 0) return;
+    const id = setTimeout(() => void synka(() => router.refresh()), 0);
+    return () => clearTimeout(id);
+  }, [uppkopplad, kolangd, router]);
+
+  // "Allt synkroniserat" är ett kvitto och ingen vilostatus; efter en
+  // stund räcker det med att det står Online.
+  useEffect(() => {
+    if (!nyssKlartNu) return;
+    const id = setTimeout(() => {
+      nyssKlartNu = false;
+      meddelaSynk();
+    }, 5000);
+    return () => clearTimeout(id);
+  });
+
+  return { uppkopplad, kolangd, synkar: synkarNu, nyssKlart: nyssKlartNu };
+}
+
+/**
+ * Synkaren utan gränssnitt, mounterad i appens layout.
+ *
+ * Låg synkningen bara i statusraden tömdes kön bara på de två sidor som
+ * visar den. En förare som bockade av en punkt och sedan gick till
+ * startsidan fick sin bock liggande i telefonen tills hen råkade tillbaka
+ * till den operativa vyn – ibland långt senare, ibland aldrig.
+ */
+export function Synkare() {
+  useSynkare();
+  return null;
+}
+
 /* --------------------------------------------------------- Statusraden */
 
 type Lage = "online" | "synkar" | "offline" | "klart";
@@ -86,76 +243,7 @@ type Lage = "online" | "synkar" | "offline" | "klart";
  * kommer fram sedan.
  */
 export function Offlinestatus() {
-  const router = useRouter();
-  const uppkopplad = useUppkopplad();
-  const kolangd = useKolangd();
-  const [synkar, setSynkar] = useState(false);
-  const [nyssKlart, setNyssKlart] = useState(false);
-  // Bara en synkning i taget. Kön krymper medan den töms, och varje
-  // ändring väcker effekten igen – utan spärren skulle en andra omgång
-  // hinna skicka en post som den första redan skickat men inte hunnit
-  // stryka, och registreringen blivit dubbel.
-  const pagar = useRef(false);
-
-  const synka = useCallback(async () => {
-    if (pagar.current) return;
-    const poster = await hamtaKo();
-    if (poster.length === 0) return;
-
-    pagar.current = true;
-    setSynkar(true);
-    try {
-      for (const post of poster) {
-        const data = new FormData();
-        for (const [namn, varde] of post.falt) data.append(namn, varde);
-        try {
-          if (post.typ === "handelse") await registerMissionEvent(data);
-          if (post.typ === "checklista") await setChecklistItem(data);
-          if (post.typ === "framdrift") await setMissionProgress(data);
-          if (post.id !== undefined) await taBortUrKo(post.id);
-        } catch {
-          // Kommer den inte fram får den ligga kvar och prövas igen. En
-          // registrering ska aldrig försvinna för att nätet svajade.
-          //
-          // Men den får inte stå i vägen för resten heller. Misslyckas
-          // den flera gånger i rad är det inte nätet det hänger på, och
-          // då hoppas den över så att det som ligger bakom kommer fram.
-          // Posten ligger kvar och räknas fortfarande.
-          if (post.id !== undefined) await raknaForsok(post.id);
-          if ((post.forsok ?? 0) + 1 < MAX_FORSOK) break;
-        }
-      }
-      // Servern har fått registreringarna, men sidan visar fortfarande
-      // det den renderades med. Utan en omritning står räknarna kvar på
-      // noll trots att markeringarna kommit fram.
-      router.refresh();
-      setNyssKlart(true);
-    } finally {
-      pagar.current = false;
-      setSynkar(false);
-    }
-  }, [router]);
-
-  // Kön töms så snart det finns uppkoppling och något i den: när nätet
-  // kommer tillbaka, när en ny registrering läggs i kön, och en gång vid
-  // start för det som köades innan appen stängdes.
-  //
-  // Synkningen startas efter renderingen och inte i den: den sätter
-  // tillstånd, och det ska inte ske mitt i samma målning som just
-  // upptäckte att det finns något att skicka.
-  useEffect(() => {
-    if (!uppkopplad || kolangd === 0) return;
-    const id = setTimeout(() => void synka(), 0);
-    return () => clearTimeout(id);
-  }, [uppkopplad, kolangd, synka]);
-
-  // "Allt synkroniserat" är ett kvitto och ingen vilostatus; efter en
-  // stund räcker det med att det står Online.
-  useEffect(() => {
-    if (!nyssKlart) return;
-    const id = setTimeout(() => setNyssKlart(false), 5000);
-    return () => clearTimeout(id);
-  }, [nyssKlart]);
+  const { uppkopplad, kolangd, synkar, nyssKlart } = useSynkare();
 
   const lage: Lage = !uppkopplad
     ? "offline"
