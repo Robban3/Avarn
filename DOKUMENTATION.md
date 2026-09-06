@@ -927,6 +927,21 @@ npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 ```
 
+**Hemlighet, aldrig variabel.** Lägger man in dem i Cloudflares
+gränssnitt måste typen vara **Secret**. `wrangler deploy` behandlar
+`wrangler.jsonc` som facit för klartextvariabler och **raderar dem som
+inte står där** – en variabel satt i gränssnittet försvinner alltså vid
+nästa driftsättning. Hemligheter rörs aldrig.
+
+Det felet är osynligt utifrån: appen driftsätts, sidorna renderar, och
+först när något frågar databasen faller den – med samma anonyma
+felsida som fyra andra orsaker ger. `/api/halsa` skiljer dem åt och
+svarar `databasadress: "saknas"` när det är just det här som hänt.
+
+(Behövs klartextvariabler av annat skäl finns `"keep_vars": true` i
+`wrangler.jsonc`, som låter driftsättningen lämna dem i fred. För
+lösenord och nycklar är hemlighet ändå rätt form.)
+
 `DIRECT_URL` behövs inte i Workern. Den används bara av
 `prisma migrate deploy`, som körs från en dator eller ett byggsteg – inte
 från appen.
