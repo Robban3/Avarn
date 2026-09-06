@@ -934,6 +934,18 @@ npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 ```
 
+**Bygget och appen har varsin lista.** I Cloudflares gränssnitt finns
+"Variables and secrets" på två ställen: ett under **Build configuration**
+och ett bland Workerns egna inställningar. Byggets lista finns bara medan
+bygget kör. Appen läser den andra. Lägger man hemligheterna i fel lista
+går bygget igenom, sidorna renderar, och först när något frågar databasen
+faller den. `/api/halsa` svarar då `bindningar: 1` – Workern har bara sin
+`ASSETS`-bindning och ingenting annat.
+
+Kommandoraden har inte den tvetydigheten: `wrangler secret put` sätter
+alltid appens hemlighet. Den bygger heller ingenting, så den fungerar
+även där bygget inte gör det.
+
 **Hemlighet, aldrig variabel.** Lägger man in dem i Cloudflares
 gränssnitt måste typen vara **Secret**. `wrangler deploy` behandlar
 `wrangler.jsonc` som facit för klartextvariabler och **raderar dem som
