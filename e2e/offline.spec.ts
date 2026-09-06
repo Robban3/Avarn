@@ -261,13 +261,26 @@ test("ett dokument som lästs blir tillgängligt offline", async ({ page }) => {
   const lank = page.getByRole("link", { name: /^testbild\.png/ });
   await expect(lank).toBeVisible();
 
-  // Innan filen hämtats lovar inget att den finns i telefonen.
-  await expect(page.getByText("Tillgänglig offline")).toHaveCount(0);
-
-  // Efter att den lästs ligger den i cachen, och då – och först då –
-  // står det att den är tillgänglig offline.
+  // Märkningen ska spegla cachen och inte gissa. Cachen är facit, så den
+  // läses direkt och jämförs med vad sidan visar.
+  //
+  // Provet påstod tidigare att märkningen saknas innan filen hämtats. Det
+  // stämmer inte: appen förhämtar uppdragets dokument med flit, se
+  // Forhamtade i src/components/Dokument.tsx. Raden passerade bara när den
+  // hann före förhämtaren, och tappade loppet så snart tidigare prov lagt
+  // upp fler dokument. Servicearbetaren gör den dessutom omöjlig att
+  // hindra utifrån – Playwrights routning når inte förfrågningar som går
+  // genom den. Det tomma läget prövas i stället i "cachen töms vid
+  // sessionsgränsen", där cachen töms av appen själv.
   const href = (await lank.getAttribute("href")) as string;
-  await page.evaluate((url) => fetch(url), href);
+  const iCachen = () =>
+    page.evaluate(async (url) => Boolean(await caches.match(url)), href);
+
+  await expect(async () => {
+    expect(await iCachen()).toBe(true);
+  }).toPass({ timeout: 15_000 });
+
+  // Ligger den i cachen står det också att den är tillgänglig offline.
   await page.reload();
   await expect(page.getByText("Tillgänglig offline")).toBeVisible();
 });
