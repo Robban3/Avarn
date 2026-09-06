@@ -943,6 +943,26 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 `prisma migrate deploy`, som körs från en dator eller ett byggsteg – inte
 från appen.
 
+#### Kopplat till GitHub
+
+Cloudflare kan bygga om vid varje push i stället för att man kör
+`cf:deploy` för hand: **Workers & Pages → Create → Workers → Import a
+repository → `Robban3/Avarn`**.
+
+| Fält | Värde |
+| --- | --- |
+| Build command | lämna tomt |
+| Deploy command | `npm run cf:deploy` |
+
+`cf:deploy` bygger och driftsätter i ett svep, så byggsteget behöver inte
+sättas separat. Hemligheterna läggs in under **Settings → Variables and
+Secrets** på samma sätt som med `wrangler secret put` – de följer aldrig
+med i repot.
+
+Bygget kräver ingen databas. `cf:build` kör `next build`, som bara
+renderar de sidor som inte frågar något: `/` och `/nekad`. Migreringarna
+körs separat, från en dator, med `npx prisma migrate deploy`.
+
 #### Fem saker som skiljer sig från Node
 
 En Worker är ingen Node-process. Fem ställen i koden vet om det, och alla
