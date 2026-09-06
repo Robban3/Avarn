@@ -924,7 +924,22 @@ låta Cloudflare bygga: deras byggmiljö är Linux och berörs inte.
 riktig TCP-anslutning), de statiska filerna som en assets-bindning, och
 cron klockan 06 varje dygn.
 
-Miljövariablerna sätts som hemligheter i stället för i en `.env`:
+Miljövariablerna sätts som hemligheter i stället för i en `.env`. Enklast
+med ett kommando, som läser `.env` och matar wrangler direkt:
+
+```bash
+npm run cf:secrets
+```
+
+Värdet passerar då aldrig urklipp, vilket är där det gått fel: ett
+citattecken ur `.env`, en inklistring som kapats, ett blanksteg på slutet.
+Alla tre ger samma otydliga fel i drift och syns inte i det maskerade
+värdet. Skriptet skriver ut längden på det som gick in, och provar
+databasadressen innan något laddas upp – nekas lösenordet avbryts allt,
+medan en anslutning som inte kommer fram bara noteras, eftersom många
+kontorsnät stänger Postgres-portarna och Workern sitter på ett annat nät.
+
+En i taget går också:
 
 ```bash
 npx wrangler secret put DATABASE_URL
@@ -1183,6 +1198,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run env:check` | Kontrollerar databasadresserna i `.env` – sort, DNS och om porten svarar. Lösenordet maskeras. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
 | `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
+| `npm run cf:secrets` | Lägger `.env`-värdena som hemligheter på Workern. Provar adressen först. |
 | `npm run cf:build` | Bygger Cloudflare-varianten till `.open-next/`. |
 | `npm run cf:preview` | Kör Cloudflare-bygget lokalt i workerd. |
 | `npm run cf:deploy` | Bygger och driftsätter på Cloudflare. |
