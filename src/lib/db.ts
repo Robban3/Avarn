@@ -2,10 +2,19 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "avarn-prisma";
 
 /**
- * En delad PrismaClient. I utveckling återanvänds instansen över
- * hot reloads så att inte varje omladdning öppnar nya anslutningar.
+ * Anslutningen till databasen.
+ *
+ * Klienten skapas första gången någon frågar efter den, inte när modulen
+ * laddas. I Cloudflare Workers laddas moduler utanför varje förfrågan, och
+ * en anslutning som öppnas där hör inte hemma i någon av dem.
  */
-const createClient = () => {
+
+/** Sant i Cloudflare Workers. Körtiden anger sig själv i navigator. */
+const iWorkers =
+  typeof navigator !== "undefined" &&
+  navigator.userAgent === "Cloudflare-Workers";
+
+const skapaKlient = () => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error(
@@ -13,7 +22,28 @@ const createClient = () => {
     );
   }
   varnaOmDirektanslutning(connectionString);
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+
+  return new PrismaClient({
+    adapter: new PrismaPg(
+      iWorkers
+        ? {
+            connectionString,
+            // En enda anslutning i taget.
+            //
+            // Prisma delar upp en fråga med nästlade include i flera
+            // SQL-satser. Med en pool som får växa öppnar den fler sockets,
+            // och i Workers hänger förfrågan då tills körtiden avbryter den
+            // med "your Worker's code had hung". Uppdragslistan och
+            // hundlistan föll på just det medan startsidan gick igenom.
+            //
+            // Serialiserat blir det en socket och inga fler att vänta på.
+            // Poolaren framför databasen sköter samtidigheten i stället.
+            max: 1,
+
+          }
+        : { connectionString },
+    ),
+  });
 };
 
 /**
@@ -45,11 +75,45 @@ function varnaOmDirektanslutning(connectionString: string) {
 }
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: ReturnType<typeof createClient>;
+  prisma?: PrismaClient;
 };
 
-export const db = globalForPrisma.prisma ?? createClient();
+function hamtaKlient(): PrismaClient {
+  // I Workers sparas klienten aldrig.
+  //
+  // Modulen laddas en gång per isolat och lever över många förfrågningar,
+  // men en socket hör till den förfrågan som öppnade den. En sparad klient
+  // bär med sig sin anslutning in i nästa förfrågan, där den aldrig svarar
+  // – första inloggningen gick igenom, de följande hängde tills körtiden
+  // avbröt dem.
+  //
+  // Priset är en anslutning per fråga i stället för en delad. Poolaren
+  // framför databasen är byggd för just det, och Hyperdrive är vägen om
+  // det behöver bli billigare.
+  if (iWorkers) return skapaKlient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+  // I utveckling återanvänds instansen över hot reloads, så att inte varje
+  // omladdning öppnar nya anslutningar.
+  const befintlig = globalForPrisma.prisma;
+  if (befintlig) return befintlig;
+
+  const ny = skapaKlient();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = ny;
+  return ny;
 }
+
+/**
+ * Exporteras som ett värde och inte som en funktion, så att de trettiotal
+ * anropsställen som skriver `db.user.findMany(...)` ser likadana ut. Bakom
+ * står en proxy som skapar klienten vid första åtkomsten.
+ */
+export const db = new Proxy({} as PrismaClient, {
+  get(_mal, egenskap) {
+    const klient = hamtaKlient() as unknown as Record<
+      string | symbol,
+      unknown
+    >;
+    const varde = klient[egenskap];
+    return typeof varde === "function" ? varde.bind(klient) : varde;
+  },
+});
