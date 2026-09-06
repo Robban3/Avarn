@@ -87,18 +87,47 @@ if (!rastreng) {
   process.exit(1);
 }
 
-let url;
-try {
-  url = new URL(rastreng);
-} catch {
+/**
+ * Plockar ut användare och värd ur den inklistrade strängen.
+ *
+ * Adressen tolkas i första hand med URL. Går det inte letas delarna ut
+ * med ett mönster i stället – det vanligaste felet är att @-tecknet
+ * mellan lösenord och värdnamn försvinner när man byter ut
+ * [YOUR-PASSWORD] för hand, och då är strängen inte längre en giltig
+ * adress fast allt som behövs står i den. Lösenordet i strängen används
+ * aldrig; det frågas efter separat.
+ */
+function tolka(strang) {
+  try {
+    const url = new URL(strang);
+    return { anvandare: decodeURIComponent(url.username), vard: url.hostname };
+  } catch {
+    // Ingen giltig adress. Står värdnamnet ändå där går det att använda.
+    const vard = /([a-z0-9-]+\.pooler\.supabase\.com)/i.exec(strang);
+    const anvandare = /postgres(?:ql)?:\/\/([^:\/@]+):/i.exec(strang);
+    if (vard && anvandare) {
+      return { anvandare: decodeURIComponent(anvandare[1]), vard: vard[1] };
+    }
+    return null;
+  }
+}
+
+const tolkat = tolka(rastreng);
+
+if (!tolkat) {
   console.error("\nDet där gick inte att tolka som en adress.");
-  console.error("Den ska börja med postgresql:// och komma från Supabase.");
+  console.error(
+    "\nKlistra in strängen precis som Supabase visar den, med",
+  );
+  console.error(
+    "[YOUR-PASSWORD] kvar – lösenordet frågas efter i nästa steg.",
+  );
+  console.error("Den ska börja med postgresql:// och sluta på /postgres.");
   rl.close();
   process.exit(1);
 }
 
-const anvandare = decodeURIComponent(url.username);
-const vard = url.hostname;
+const { anvandare, vard } = tolkat;
 
 if (!/pooler\.supabase\.com$/i.test(vard)) {
   console.error(`\nVärdnamnet är ${vard}.`);
