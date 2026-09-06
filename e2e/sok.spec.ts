@@ -111,6 +111,17 @@ test("den senaste sökningen sparas i telefonen", async ({ page }) => {
   await loggaIn(page, KONTON.hundforare);
   await page.goto("/sok?q=nova");
 
+  // Sökningen skrivs ner först när sidans JavaScript hunnit igång. Går
+  // provet vidare innan dess hinner den aldrig sparas, och det mäter då
+  // hydreringens hastighet i stället för att listan kommer ihåg – vilket
+  // är precis vad som hände mot workerd, där svaren är några tiondelar
+  // långsammare än mot utvecklingsservern.
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("avarn.senaste-sokningar")),
+    )
+    .toContain("nova");
+
   // Tillbaka till tomma läget: sökningen ligger kvar som en genväg.
   await page.goto("/sok");
   await expect(
