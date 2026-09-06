@@ -23,9 +23,9 @@
     "binding": "ASSETS"
   },
 
-  // Certifikatpåminnelserna. Samma tid som vercel.json hade: klockan 06
-  // varje dygn. Hanteraren ligger i src/worker.ts och anropar samma rutt
-  // som en manuell körning skulle göra.
+  // Certifikatpåminnelserna, klockan 06 varje dygn. Hanteraren ligger i
+  // src/worker.ts och anropar samma rutt som en manuell körning skulle
+  // göra.
   "triggers": {
     "crons": ["0 6 * * *"]
   },

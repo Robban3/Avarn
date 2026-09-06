@@ -5,9 +5,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * Lagringsbackend för bilagor.
  *
  * Finns Supabase-nycklarna används Supabase Storage – nödvändigt i drift,
- * eftersom Vercels filsystem är flyktigt och uppladdade filer annars
- * försvinner vid varje driftsättning. Saknas nycklarna används disken, så
- * att lokal utveckling fungerar utan moln.
+ * eftersom en Cloudflare Worker inte har något filsystem alls. Saknas
+ * nycklarna används disken, så att lokal utveckling fungerar utan moln.
  *
  * Hinken är privat. Filer lämnas aldrig ut direkt härifrån utan går alltid
  * via /api/media/[id], som gör behörighetskontrollen först.

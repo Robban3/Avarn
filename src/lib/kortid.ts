@@ -1,7 +1,7 @@
 /**
  * Vilken körtid appen står i.
  *
- * Appen körs på två ställen: i Node (utveckling, `next start`, Vercel) och i
+ * Appen körs på två ställen: i Node (utveckling och `next start`) och i
  * en Cloudflare Worker. Det mesta är sig likt, men tre saker skiljer:
  * anslutningar får inte sparas mellan förfrågningar, det finns inget
  * filsystem, och wasm laddas bara som importerad modul.

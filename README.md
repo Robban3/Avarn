@@ -87,6 +87,6 @@ bcrypt-hashade lösenord; formulär går genom Server Actions med
 Zod-validering. Appen fungerar utan uppkoppling – se
 [Offline](DOKUMENTATION.md#7-offline).
 
-Den kör både på Vercel och på Cloudflare Workers (OpenNext-adaptern,
-`wrangler.jsonc`). Vad som skiljer körtiderna åt står under
+Appen driftsätts på Cloudflare Workers genom OpenNext-adaptern
+(`wrangler.jsonc`). Vad som skiljer en Worker från Node står under
 [Drift](DOKUMENTATION.md#9-drift).

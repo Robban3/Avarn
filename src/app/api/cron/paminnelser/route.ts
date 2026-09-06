@@ -10,8 +10,9 @@ import { daysUntil } from "@/lib/format";
  * Anropas av en schemaläggare en gång per dygn:
  *   curl -H "x-cron-key: $CRON_KEY" https://.../api/cron/paminnelser
  *
- * Vercels schemaläggare skickar i stället "Authorization: Bearer $CRON_SECRET"
- * och kan inte sätta egna huvuden, så båda formerna godtas.
+ * På Cloudflare anropas den av src/worker.ts på schemat i wrangler.jsonc.
+ * Nyckeln godtas också som "Authorization: Bearer $CRON_KEY", för
+ * schemaläggare som inte kan sätta egna huvuden.
  *
  * Varje mottagare varnas en gång per certifikat och tröskel (30 respektive
  * 7 dagar), så att en daglig körning inte fyller meddelandelistan.
@@ -26,13 +27,9 @@ function isAuthorised(request: NextRequest) {
 
   if (request.headers.get("x-cron-key") === expected) return true;
 
-  // Vercel Cron: Authorization: Bearer <CRON_SECRET>
   const bearer = request.headers.get("authorization");
-  const vercelSecret = process.env.CRON_SECRET;
   if (bearer?.startsWith("Bearer ")) {
-    const token = bearer.slice(7);
-    if (token === expected) return true;
-    if (vercelSecret && token === vercelSecret) return true;
+    return bearer.slice(7) === expected;
   }
 
   return false;

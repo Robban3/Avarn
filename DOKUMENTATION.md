@@ -862,7 +862,6 @@ initialer. Läggs en bildadress in i `Dog.photoUrl` eller
 | `DIRECT_URL` | ja | Migreringarnas anslutning. Supabase: **session pooler**, port 5432. Transaktionspoolaren släpper inte igenom schemaändringar, men sessionspoolaren gör det. |
 | `AUTH_SECRET` | ja | Signerar sessionskakan. Minst 16 tecken, annars startar inte appen. |
 | `CRON_KEY` | för påminnelser | Nyckeln som certifikatjobbet autentiserar med. |
-| `CRON_SECRET` | nej | Vercels egen cron-hemlighet, godtas som alternativ. |
 | `SUPABASE_URL` | i drift | Projektets adress, för lagring av bilagor. Obligatorisk på Cloudflare. |
 | `SUPABASE_SERVICE_ROLE_KEY` | i drift | Nyckel till lagringen. Obligatorisk på Cloudflare. |
 
@@ -903,21 +902,10 @@ utan `?pgbouncer=true`.
 klientkod eller i en `NEXT_PUBLIC_`-variabel. Den används bara på servern,
 för bilagorna.
 
-### Vercel
-
-1. **New Project → importera repot.** Ramverket känns igen automatiskt.
-2. **Lägg in miljövariablerna** ovan.
-3. **Deploy.**
-
-Byggsteget är `prisma migrate deploy && next build`, så schemaändringar
-följer med varje driftsättning. `vercel.json` lägger appen i Dublin
-(`dub1`), samma region som en Supabase i `eu-west-1`, och schemalägger
-`/api/cron/paminnelser` klockan 06 varje dag.
-
 ### Cloudflare Workers
 
-Appen kan köras på Cloudflare i stället för Vercel. Bygget går genom
-OpenNexts adapter, som packar Next-bygget till en Worker.
+Appen körs på Cloudflare Workers. Bygget går genom OpenNexts adapter, som
+packar Next-bygget till en Worker.
 
 ```bash
 npm run cf:build     # bygger .open-next/
@@ -927,7 +915,7 @@ npm run cf:deploy    # driftsätter
 
 `wrangler.jsonc` håller inställningarna: `nodejs_compat` (Prisma öppnar en
 riktig TCP-anslutning), de statiska filerna som en assets-bindning, och
-cron klockan 06 – samma tid som `vercel.json` har.
+cron klockan 06 varje dygn.
 
 Miljövariablerna sätts som hemligheter i stället för i en `.env`:
 
@@ -1034,8 +1022,8 @@ du slå på radsäkerheten själv – kör raderna längst ner i
 
 ### Bilagor
 
-Vercels filsystem är flyktigt och en Cloudflare Worker har inget alls, så
-uppladdade bilder och filmer kan inte ligga på disk. Är `SUPABASE_URL` och
+En Cloudflare Worker har inget filsystem, så uppladdade bilder och filmer
+kan inte ligga på disk. Är `SUPABASE_URL` och
 `SUPABASE_SERVICE_ROLE_KEY` satta sparas de i en privat hink
 (`avarn-media`) i Supabase Storage, som skapas automatiskt vid första
 uppladdningen. Saknas nycklarna används disken (`storage/uploads/`), så att
@@ -1056,9 +1044,9 @@ körning inte fyller meddelandelistan.
 curl -X POST -H "x-cron-key: $CRON_KEY" https://.../api/cron/paminnelser
 ```
 
-Vercels schemaläggare kan inte sätta egna huvuden och skickar i stället
-`Authorization: Bearer …`; båda formerna godtas. På Cloudflare anropas
-rutten av `src/worker.ts` med `x-cron-key`.
+På Cloudflare anropas rutten av `src/worker.ts`, som skickar `x-cron-key`.
+Samma nyckel godtas också som `Authorization: Bearer …`, för
+schemaläggare som inte kan sätta egna huvuden.
 
 ### Konton i exempeldatan
 
@@ -1101,13 +1089,14 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | Kommando | Gör |
 | --- | --- |
 | `npm run dev` | Utvecklingsserver. |
-| `npm run build` | `prisma migrate deploy && next build`. |
+| `npm run build` | `next build`. |
 | `npm run start` | Produktionsserver. |
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test` | Vitest – 94 enhetsprov i 6 filer. |
 | `npm run test:e2e` | Playwright – 91 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
+| `npm run db:deploy` | Kör väntande migreringar mot databasen. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |
 | `npm run seed` | Lägger in exempeldata på nytt. |
 | `npm run db:studio` | Prisma Studio. |
@@ -1118,6 +1107,9 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run env:check` | Kontrollerar databasadresserna i `.env` – sort, DNS och om porten svarar. Lösenordet maskeras. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
 | `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
+| `npm run cf:build` | Bygger Cloudflare-varianten till `.open-next/`. |
+| `npm run cf:preview` | Kör Cloudflare-bygget lokalt i workerd. |
+| `npm run cf:deploy` | Bygger och driftsätter på Cloudflare. |
 
 ### Enhetsproven
 

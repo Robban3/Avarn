@@ -50,9 +50,9 @@ const skapaKlient = () => {
  * text som vid fel lösenord, pausat projekt och stängd brandvägg. Utan
  * den här raden finns ingenting som pekar ut vilket av fallen det är.
  *
- * Varnar och kastar inte: direktanslutningen fungerar där IPv6 finns,
- * Vercel till exempel, och ett kast hade brutit en driftsättning som
- * gick bra. Bara i utveckling, så att den inte brusar i driftloggen.
+ * Varnar och kastar inte: direktanslutningen fungerar på nät som har
+ * IPv6, och ett kast hade brutit en driftsättning som gick bra. Bara i
+ * utveckling, så att den inte brusar i driftloggen.
  */
 function varnaOmDirektanslutning(connectionString: string) {
   if (process.env.NODE_ENV === "production") return;
