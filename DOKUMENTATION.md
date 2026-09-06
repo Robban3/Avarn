@@ -913,6 +913,13 @@ npm run cf:preview   # kör bygget lokalt i workerd
 npm run cf:deploy    # driftsätter
 ```
 
+**Bygg inte på Windows.** OpenNext länkar in de paket som hålls utanför
+bygget – `avarn-prisma` är ett sådant, se tabellen nedan – och Windows
+kräver särskild rättighet för symlänkar. `npm run cf:deploy` faller då på
+`EPERM: operation not permitted, symlink`, och `scripts/cf.mjs` skriver ut
+vad som gäller. Utvecklarläge eller WSL löser det, men enklast är att
+låta Cloudflare bygga: deras byggmiljö är Linux och berörs inte.
+
 `wrangler.jsonc` håller inställningarna: `nodejs_compat` (Prisma öppnar en
 riktig TCP-anslutning), de statiska filerna som en assets-bindning, och
 cron klockan 06 varje dygn.
