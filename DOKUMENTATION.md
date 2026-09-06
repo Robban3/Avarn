@@ -1049,6 +1049,8 @@ saknas:
   "databasen": "svarar",
   "svarstid": 42,
   "anvandare": 11,
+  "migreringar": 8,
+  "senaste": "20260903174616_uppdragsdokument",
   "authSecret": "ok",
   "cronKey": "ok",
   "lagring": "supabase"
@@ -1063,6 +1065,7 @@ saknas:
 | `databasen` | `P1001` | Adressen går inte fram: fel värdnamn, fel port, eller pausat projekt. |
 | | `P1000` | Fel lösenord eller fel användarnamn. Poolaren vill ha `postgres.<projekt>`, inte `postgres`. |
 | | `P2037` | Slut på anslutningar. |
+| `migreringar` | färre än katalogerna i `prisma/migrations` | Databasen ligger efter. Sidorna faller på kolumner som saknas, medan hälsorutten svarar som vanligt – den frågar bara efter användare. Kör de saknade filerna ur `prisma/supabase/` i SQL Editor. |
 | `authSecret` | `saknas` / `för kort` | Sätt `AUTH_SECRET`, minst 16 tecken. Utan den går inloggningen inte att signera. |
 | `lagring` | `ingen` | Kör i Workers utan Supabase-nycklar. Allt utom bilagor fungerar. |
 

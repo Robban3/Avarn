@@ -126,12 +126,36 @@ export async function GET() {
 
   let databasen = "svarar";
   let anvandare: number | null = null;
+  let migreringar: number | null = null;
+  let senaste: string | null = null;
   const start = Date.now();
 
   try {
     // En räkning på den minsta tabellen: bevisar både att anslutningen
     // går fram och att det är rätt databas, utan att läsa någons uppgifter.
     anvandare = await db.user.count();
+
+    // Vilken schemaversion databasen står på.
+    //
+    // En databas som ligger efter svarar på allt det här ändå – den har
+    // både anslutning och användare. Först när en vy frågar efter en
+    // kolumn som saknas faller den, och då som ett ohanterat fel utan
+    // spår av att det handlar om migreringar. Namnet räcker för att
+    // jämföra med prisma/migrations i repot.
+    const rader = await db.$queryRaw<{ migration_name: string }[]>`
+      select migration_name
+      from "_prisma_migrations"
+      where finished_at is not null
+      order by finished_at desc
+      limit 1
+    `;
+    const alla = await db.$queryRaw<{ antal: bigint }[]>`
+      select count(*) as antal
+      from "_prisma_migrations"
+      where finished_at is not null
+    `;
+    migreringar = Number(alla[0]?.antal ?? 0);
+    senaste = rader[0]?.migration_name ?? null;
   } catch (fel) {
     databasen = felkod(fel);
     // Hela felet till loggen, för den som har den. Svaret får bara koden.
@@ -147,6 +171,8 @@ export async function GET() {
       databasen,
       svarstid,
       anvandare,
+      migreringar,
+      senaste,
       authSecret: hemlighetens_skick(),
       cronKey: miljo("CRON_KEY") ? "ok" : "saknas",
       // Vilken av de två källorna som är tom säger var felet sitter.
