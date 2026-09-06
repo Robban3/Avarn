@@ -23,13 +23,40 @@ function bindningar(): Record<string, unknown> | undefined {
   return sammanhang?.env;
 }
 
+/**
+ * Tar bort det som följer med när ett värde kopieras ur en .env-fil.
+ *
+ * `npm run setup` skriver värdena inom citattecken, som filformatet vill.
+ * Klistras raden in i `wrangler secret put` följer citattecknen med in i
+ * hemligheten, och `new URL()` faller på ett tecken ingen ser. Samma sak
+ * med ett blanksteg som råkat följa med från en kopiering.
+ *
+ * Bara ett par tas bort, och bara när tecknen är lika. Ett lösenord som
+ * slutar på apostrof förlorar ingenting.
+ */
+function stadat(varde: string): string {
+  const rensat = varde.trim();
+  const forsta = rensat[0];
+  if (
+    rensat.length >= 2 &&
+    (forsta === '"' || forsta === "'") &&
+    rensat.at(-1) === forsta
+  ) {
+    return rensat.slice(1, -1);
+  }
+  return rensat;
+}
+
 export function miljo(namn: string): string | undefined {
   const kopian = process.env[namn];
-  if (kopian !== undefined) return kopian;
+  if (kopian !== undefined) return stadat(kopian);
 
   const varde = bindningar()?.[namn];
-  return typeof varde === "string" ? varde : undefined;
+  return typeof varde === "string" ? stadat(varde) : undefined;
 }
+
+/** Exporterad enbart för enhetsprovet. */
+export const _stadat = stadat;
 
 /**
  * Hur många värden var och en av de två källorna har.
