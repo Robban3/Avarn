@@ -414,6 +414,18 @@ npm run db:sql             # prisma/supabase-setup.sql, hela uppsättningen
 npm run db:sql:migrations  # prisma/supabase/, en fil per migrering
 ```
 
+Båda läser anslutningen ur `.env` och dumpar ur en färdigmigrerad och
+seedad databas, så att filerna aldrig kan hamna i otakt med schemat.
+
+**Glöms omgenereringen bort säger `src/lib/migreringar.test.ts` till.**
+Provet jämför migreringarna i `prisma/migrations/` med dem helfilen bokför
+och med filerna i `prisma/supabase/`, och kontrollerar att varje modell i
+schemat har en tabell i helfilen. Det finns för att det hänt: helfilen låg
+en gång fyra migreringar efter, utan tabellen `MissionEvent` och utan
+kolumnerna för uppdragsdetaljer, pågående uppdrag, uppdragsområde och
+dokument. Filen såg hel ut och gick att köra – felet visade sig först som
+en databas där halva appen kraschade.
+
 ---
 
 ## 6. Vyerna
@@ -1002,7 +1014,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run start` | Produktionsserver. |
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
-| `npm run test` | Vitest – 91 enhetsprov i 5 filer. |
+| `npm run test` | Vitest – 94 enhetsprov i 6 filer. |
 | `npm run test:e2e` | Playwright – 91 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |

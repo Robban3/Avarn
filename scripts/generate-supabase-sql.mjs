@@ -12,6 +12,14 @@
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
+
+// .env läses in, så att kommandot fungerar som dokumentationen påstår.
+// Utan det gick "npm run db:sql" inte igenom utan att adressen skrevs på
+// kommandoraden – och det är just därför filen hann glida fyra
+// migreringar efter schemat innan någon märkte det.
+dotenv.config({ path: path.join(process.cwd(), ".env"), quiet: true });
 
 const url = process.argv[2] ?? process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!url) {
