@@ -43,7 +43,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sv" className={`${inter.variable} h-full`}>
+    // suppressHydrationWarning gäller bara <html>-taggens egna attribut,
+    // inte något inuti sidan. Webbläsartillägg – skärmklippare,
+    // lösenordshanterare, översättare – hänger på egna attribut här innan
+    // React hunnit hydrera, och React rapporterar det som en avvikelse
+    // fast ingenting är fel i appen. Ett falsklarm i konsolen som kommer
+    // vid varje sidladdning är värre än inget larm, eftersom man slutar
+    // läsa dem. Avvikelser längre in i trädet rapporteras som förut.
+    <html
+      lang="sv"
+      className={`${inter.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full">{children}</body>
     </html>
   );
