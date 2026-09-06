@@ -74,6 +74,9 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
+/** Den delade klienten i Node. I Workers används den aldrig. */
+let sparad: PrismaClient | undefined;
+
 function hamtaKlient(): PrismaClient {
   // I Workers sparas klienten aldrig.
   //
@@ -88,14 +91,15 @@ function hamtaKlient(): PrismaClient {
   // det behöver bli billigare.
   if (iWorkers) return skapaKlient();
 
-  // I utveckling återanvänds instansen över hot reloads, så att inte varje
-  // omladdning öppnar nya anslutningar.
-  const befintlig = globalForPrisma.prisma;
-  if (befintlig) return befintlig;
-
-  const ny = skapaKlient();
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = ny;
-  return ny;
+  // I Node delas en klient av alla förfrågningar. Modulen laddas en gång,
+  // så en modulvariabel räcker – och den måste finnas: utan den skapade
+  // proxyn nedan en ny klient med en egen pool vid varje åtkomst på `db`,
+  // och databasen svarade "sorry, too many clients already" efter någon
+  // minut. I utveckling räcker inte modulvariabeln, eftersom varje hot
+  // reload laddar om modulen; där sparas klienten på globalThis i stället.
+  sparad ??= globalForPrisma.prisma ?? skapaKlient();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = sparad;
+  return sparad;
 }
 
 /**
