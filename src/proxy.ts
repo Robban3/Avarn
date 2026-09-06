@@ -15,6 +15,9 @@ const PUBLIC_PATHS = [
   "/ikon-maskable.svg",
   // Schemalagda jobb autentiserar med egen nyckel i stället för session.
   "/api/cron",
+  // Säger vad som saknas när appen inte startar. Måste nås utan session:
+  // det är just inloggningen som inte går att komma igenom då.
+  "/api/halsa",
 ];
 
 export async function proxy(request: NextRequest) {

@@ -81,3 +81,29 @@ test("cron-jobbet kräver nyckel", async ({ request }) => {
   });
   expect(fel.status()).toBe(401);
 });
+
+test("hälsorutten svarar utan session och läcker ingenting", async ({
+  request,
+}) => {
+  const svar = await request.get("/api/halsa");
+  expect(svar.status()).toBe(200);
+
+  const lage = await svar.json();
+  expect(lage.databasen).toBe("svarar");
+  expect(lage.anvandare).toBeGreaterThan(0);
+  expect(lage.authSecret).toBe("ok");
+
+  // Den viktigare halvan: en diagnostikrutt som växer sig pratsam är en
+  // läcka. Varken adressen, lösenordet eller hemligheten får finnas i
+  // svaret – bara omdömen om dem.
+  const kropp = await svar.text();
+  for (const hemligt of [
+    process.env.DATABASE_URL,
+    process.env.AUTH_SECRET,
+    process.env.CRON_KEY,
+  ]) {
+    if (hemligt) expect(kropp).not.toContain(hemligt);
+  }
+  expect(kropp).not.toContain("postgresql://");
+  expect(kropp).not.toContain("supabase.com");
+});

@@ -984,6 +984,48 @@ Importen sker under namnet `open-next-worker`, som `wrangler.jsonc` binder
 till `.open-next/worker.js`. Det är för att `tsc` ska ge samma svar på ett
 nyklonat repo som på ett byggt.
 
+### Vad appen svarar när den inte startar
+
+Fyra helt olika fel ger användaren samma sida – "Något gick fel" med en
+felkod som bara är Nexts `digest`, alltså en hash. Utan serverloggen går
+de inte att skilja åt, och loggen ligger hos den som driftsatt.
+
+Därför finns `/api/halsa`. Den svarar utan inloggning och säger vad som
+saknas:
+
+```json
+{
+  "kortid": "workers",
+  "databasadress": "poolare",
+  "databasen": "svarar",
+  "svarstid": 42,
+  "anvandare": 11,
+  "authSecret": "ok",
+  "cronKey": "ok",
+  "lagring": "supabase"
+}
+```
+
+| Fält | Värde | Vad som är fel och vad du gör |
+| --- | --- | --- |
+| `databasadress` | `saknas` | `DATABASE_URL` når inte körtiden. På Cloudflare: Settings → Variables and Secrets, inte Build variables. |
+| | `direktanslutning` | Adressen pekar på `db.<projekt>.supabase.co`, som bara har IPv6. Byt till poolaren. |
+| | `otolkbar` | Kvarlämnad `[YOUR-PASSWORD]`, okodat tecken i lösenordet, eller ett avhugget `@`. |
+| `databasen` | `P1001` | Adressen går inte fram: fel värdnamn, fel port, eller pausat projekt. |
+| | `P1000` | Fel lösenord eller fel användarnamn. Poolaren vill ha `postgres.<projekt>`, inte `postgres`. |
+| | `P2037` | Slut på anslutningar. |
+| `authSecret` | `saknas` / `för kort` | Sätt `AUTH_SECRET`, minst 16 tecken. Utan den går inloggningen inte att signera. |
+| `lagring` | `ingen` | Kör i Workers utan Supabase-nycklar. Allt utom bilagor fungerar. |
+
+Rutten lämnar aldrig ut ett värde, bara ett omdöme: att adressen är en
+poolare, inte vilken; att lösenordet nekas, inte vilket det var. Prismas
+felmeddelanden går till loggen men aldrig till svaret, eftersom de bär med
+sig både värdnamn och användarnamn. Ett prov i `e2e/atkomst.spec.ts`
+vaktar just det.
+
+Att den är öppen utan nyckel är avsiktligt: när `CRON_KEY` är det som
+saknas går den inte att skydda med `CRON_KEY`.
+
 ### Databasen i Supabase
 
 Går det inte att köra `npm run db:setup` finns SQL:en färdig i repot:
