@@ -1085,9 +1085,21 @@ Går det inte att köra `npm run db:setup` finns SQL:en färdig i repot:
 | Läge | Kör | Var |
 | --- | --- | --- |
 | Ny, tom databas | hela uppsättningen | `prisma/supabase-setup.sql` |
-| Databasen har redan tabellerna | en migrering i taget | filerna i `prisma/supabase/` |
+| Databasen ligger efter | allt som saknas, i ett svep | `prisma/supabase-migreringar.sql` |
+| En enskild migrering | en i taget | filerna i `prisma/supabase/` |
 
 Öppna **SQL Editor → New query**, klistra in filen och kör.
+`supabase-migreringar.sql` innehåller alla migreringar i ordning, var och
+en inlindad så att den hoppar över sig själv om den redan är körd. Den kan
+alltså köras på en uppsatt databas i vilket läge som helst och gör bara det
+som återstår – man behöver inte först ta reda på var databasen står.
+Utskriften under **Results** säger vad som hände, en rad per migrering.
+
+En databas som ligger efter är svår att känna igen utifrån: den svarar,
+den har användare, och inloggningen fungerar. Först när en vy frågar efter
+en kolumn som saknas faller den, som ett ohanterat fel. `/api/halsa`
+rapporterar `migreringar` och `senaste` just för det.
+
 `supabase-setup.sql` skapar de 28 tabellerna, lägger in exempeldatan, slår
 på radsäkerhet och bokför migreringarna. Den avbryts med
 `relation ... already exists` om databasen redan är uppsatt – det är

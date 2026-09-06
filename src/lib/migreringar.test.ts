@@ -64,6 +64,20 @@ describe("de genererade SQL-filerna för Supabase", () => {
     ).toEqual(migreringar());
   });
 
+  it("har med alla migreringar i den samlade filen", () => {
+    const sql = readFileSync(
+      path.join(rot, "prisma", "supabase-migreringar.sql"),
+      "utf8",
+    );
+    const bokforda = [...sql.matchAll(/WHERE migration_name = '(\d{14}_[a-z0-9_]+)'/g)]
+      .map((trafF) => trafF[1])
+      .sort();
+    expect(
+      bokforda,
+      "prisma/supabase-migreringar.sql är i otakt med prisma/migrations. Kör: npm run db:sql:migrations",
+    ).toEqual(migreringar());
+  });
+
   it("innehåller hela schemat, inte bara det som fanns när filen skrevs", () => {
     const sql = readFileSync(path.join(rot, "prisma", "supabase-setup.sql"), "utf8");
     const modeller = readFileSync(path.join(rot, "prisma", "schema.prisma"), "utf8")

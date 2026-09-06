@@ -53,6 +53,9 @@ function checksums() {
 const sums = checksums();
 mkdirSync(OUT_DIR, { recursive: true });
 
+/** Blocken samlas för att också kunna skrivas som en enda fil. */
+const block = [];
+
 const names = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
   .filter((e) => e.isDirectory())
   .map((e) => e.name)
@@ -99,20 +102,7 @@ for (const name of names) {
     .map((line) => (line.trim() ? `    ${line}` : line))
     .join("\n");
 
-  const file = `--
--- Migrering: ${name}
---
--- Klistra in i Supabase: SQL Editor > New query > Run.
--- Avsedd för en databas som REDAN har tabellerna. Är databasen tom, kör
--- prisma/supabase-setup.sql i stället.
---
--- Filen kan köras om utan risk: har migreringen redan applicerats händer
--- ingenting.
---
--- Genererad av scripts/generate-supabase-migration-sql.mjs.
---
-
-DO $migration$
+  const doBlock = `DO $migration$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM public._prisma_migrations
@@ -143,6 +133,55 @@ END
 $migration$;
 `;
 
-  writeFileSync(path.join(OUT_DIR, `${name}.sql`), file, "utf8");
+  const rubrik = `--
+-- Migrering: ${name}
+--
+-- Klistra in i Supabase: SQL Editor > New query > Run.
+-- Avsedd för en databas som REDAN har tabellerna. Är databasen tom, kör
+-- prisma/supabase-setup.sql i stället.
+--
+-- Filen kan köras om utan risk: har migreringen redan applicerats händer
+-- ingenting.
+--
+-- Genererad av scripts/generate-supabase-migration-sql.mjs.
+--
+
+`;
+
+  writeFileSync(path.join(OUT_DIR, `${name}.sql`), rubrik + doBlock, "utf8");
   console.log(`Skrev ${OUT_DIR}/${name}.sql`);
+  block.push({ name, doBlock });
 }
+
+/**
+ * Alla migreringar i en enda fil.
+ *
+ * En databas som ligger efter behöver körningarna i ordning, och att veta
+ * vilka som saknas kräver att man först tar reda på var den står. Eftersom
+ * varje block hoppar över sig självt när det redan är bokfört behövs inte
+ * den kunskapen: filen kan köras på vilken uppsatt databas som helst och
+ * gör bara det som återstår.
+ *
+ * Ligger utanför prisma/supabase/, där en fil per migrering är hela
+ * innehållet och vaktas av src/lib/migreringar.test.ts.
+ */
+const samlad = `--
+-- Alla migreringar, i ordning.
+--
+-- Klistra in i Supabase: SQL Editor > New query > Run.
+-- Avsedd för en databas som REDAN har tabellerna men ligger efter. Varje
+-- migrering hoppar över sig själv om den redan är körd, så filen kan
+-- köras på en databas i vilket läge som helst och gör bara det som
+-- återstår. Är databasen tom, kör prisma/supabase-setup.sql i stället.
+--
+-- Utskriften under Results säger vad som hände, en rad per migrering.
+--
+-- Genererad av scripts/generate-supabase-migration-sql.mjs.
+--
+
+${block.map(({ name, doBlock }) => `-- ${name}\n${doBlock}`).join("\n\n")}
+`;
+
+const samladVag = path.join("prisma", "supabase-migreringar.sql");
+writeFileSync(samladVag, samlad, "utf8");
+console.log(`Skrev ${samladVag} (${block.length} migreringar)`);
