@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { miljo } from "./miljo";
 
 /**
  * Lagringsbackend för bilagor.
@@ -18,8 +19,8 @@ let cached: SupabaseClient | null = null;
 
 /** Supabase-klienten, eller null när lagringen ska ske på disk. */
 export function storageClient(): SupabaseClient | null {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = miljo("SUPABASE_URL");
+  const key = miljo("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) return null;
 
   cached ??= createClient(url, key, {

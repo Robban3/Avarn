@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { jwtVerify, SignJWT } from "jose";
 import type { Role } from "./domain";
+import { miljo } from "./miljo";
 
 /**
  * Sessionshantering med signerad cookie (JWT via jose). Vald framför ett
@@ -21,10 +22,11 @@ export type SessionUser = {
 };
 
 function secretKey() {
-  const secret = process.env.AUTH_SECRET;
+  const secret = miljo("AUTH_SECRET");
   if (!secret || secret.length < 16) {
     throw new Error(
-      "AUTH_SECRET saknas eller är för kort. Sätt den i .env innan appen startas.",
+      "AUTH_SECRET saknas eller är för kort. Sätt den i .env, eller som " +
+        "hemlighet i Cloudflare (Settings → Variables and Secrets).",
     );
   }
   return new TextEncoder().encode(secret);

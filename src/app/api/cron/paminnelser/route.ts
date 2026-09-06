@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notify";
 import { getSettings } from "@/lib/settings";
 import { daysUntil } from "@/lib/format";
+import { miljo } from "@/lib/miljo";
 
 /**
  * Skapar påminnelser om certifikat som snart går ut.
@@ -22,7 +23,7 @@ import { daysUntil } from "@/lib/format";
 
 /** Godkänner anropet om nyckeln stämmer, oavsett vilket huvud den kom i. */
 function isAuthorised(request: NextRequest) {
-  const expected = process.env.CRON_KEY;
+  const expected = miljo("CRON_KEY");
   if (!expected) return false;
 
   if (request.headers.get("x-cron-key") === expected) return true;
@@ -36,7 +37,7 @@ function isAuthorised(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!process.env.CRON_KEY) {
+  if (!miljo("CRON_KEY")) {
     return Response.json(
       { error: "CRON_KEY är inte konfigurerad." },
       { status: 500 },

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { iWorkers } from "@/lib/kortid";
+import { miljo, miljoantal } from "@/lib/miljo";
 import { usesCloudStorage } from "@/lib/storage";
 
 /**
@@ -20,8 +21,13 @@ import { usesCloudStorage } from "@/lib/storage";
  */
 
 /** Vilken sorts anslutning DATABASE_URL pekar på – räknat ur formen, inte innehållet. */
-function adressens_sort(): "saknas" | "poolare" | "direktanslutning" | "otolkbar" {
-  const adress = process.env.DATABASE_URL;
+function adressens_sort():
+  | "saknas"
+  | "poolare"
+  | "direktanslutning"
+  | "egen"
+  | "otolkbar" {
+  const adress = miljo("DATABASE_URL");
   if (!adress) return "saknas";
   try {
     const { hostname } = new URL(adress);
@@ -29,7 +35,8 @@ function adressens_sort(): "saknas" | "poolare" | "direktanslutning" | "otolkbar
     if (/^db\.[a-z0-9]+\.supabase\.(co|com)$/i.test(hostname)) {
       return "direktanslutning";
     }
-    return "poolare";
+    // Egen Postgres, i utveckling eller på en egen server.
+    return "egen";
   } catch {
     // Kvarlämnad platshållare, okodat tecken i lösenordet, avhugget @ –
     // allt landar här, och alla tre ger samma otydliga fel i drift.
@@ -39,7 +46,7 @@ function adressens_sort(): "saknas" | "poolare" | "direktanslutning" | "otolkbar
 
 /** AUTH_SECRET måste finnas och vara minst 16 tecken; se src/lib/session.ts. */
 function hemlighetens_skick(): "saknas" | "för kort" | "ok" {
-  const hemlighet = process.env.AUTH_SECRET;
+  const hemlighet = miljo("AUTH_SECRET");
   if (!hemlighet) return "saknas";
   return hemlighet.length < 16 ? "för kort" : "ok";
 }
@@ -80,6 +87,37 @@ function felkod(fel: unknown): string {
     lager = post.cause;
   }
 
+  return ur_meddelandet(fel);
+}
+
+/**
+ * Sista utvägen: känn igen felet på vad det säger.
+ *
+ * Socketfel i workerd bär varken kod eller namn – bara en mening. Den får
+ * inte returneras rakt av, eftersom den ofta innehåller värdnamnet. I
+ * stället matchas den mot kända formuleringar och svaret blir en symbol
+ * ur den här listan, aldrig något som kommer utifrån.
+ */
+function ur_meddelandet(fel: unknown): string {
+  const text =
+    fel instanceof Error ? `${fel.message} ${fel.cause ?? ""}` : String(fel);
+
+  const kanda: [RegExp, string][] = [
+    [/refused/i, "nekad anslutning"],
+    // workerds egen formulering när connect() inte kommer fram.
+    [/cannot connect|proxy request failed/i, "nådde inte adressen"],
+    [/timed?[ -]?out|ETIMEDOUT/i, "tidsgränsen gick ut"],
+    [/getaddrinfo|ENOTFOUND|dns/i, "värdnamnet finns inte"],
+    [/authentication|password/i, "nekat lösenord"],
+    [/too many/i, "slut på anslutningar"],
+    [/ssl|tls|certificate/i, "krypteringen gick inte att sätta upp"],
+    [/DATABASE_URL/, "DATABASE_URL saknas"],
+    [/AUTH_SECRET/, "AUTH_SECRET saknas"],
+  ];
+
+  for (const [monster, symbol] of kanda) {
+    if (monster.test(text)) return symbol;
+  }
   return "okänt";
 }
 
@@ -110,7 +148,9 @@ export async function GET() {
       svarstid,
       anvandare,
       authSecret: hemlighetens_skick(),
-      cronKey: process.env.CRON_KEY ? "ok" : "saknas",
+      cronKey: miljo("CRON_KEY") ? "ok" : "saknas",
+      // Vilken av de två källorna som är tom säger var felet sitter.
+      ...miljoantal(),
       lagring: usesCloudStorage() ? "supabase" : iWorkers ? "ingen" : "disk",
     },
     {

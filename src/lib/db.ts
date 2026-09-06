@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "avarn-prisma";
 import { iWorkers } from "./kortid";
+import { miljo } from "./miljo";
 
 /**
  * Anslutningen till databasen.
@@ -11,10 +12,11 @@ import { iWorkers } from "./kortid";
  */
 
 const skapaKlient = () => {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = miljo("DATABASE_URL");
   if (!connectionString) {
     throw new Error(
-      "DATABASE_URL saknas. Peka den mot din Supabase-databas i .env.",
+      "DATABASE_URL saknas. Peka den mot din databas i .env, eller sätt " +
+        "den som hemlighet i Cloudflare (Settings → Variables and Secrets).",
     );
   }
   varnaOmDirektanslutning(connectionString);
