@@ -33,6 +33,11 @@ flesta hemma- och kontorsnät är IPv4. Pekar `DATABASE_URL` dit får du
 lösenordet eller databasen. `npm run env:check` säger vad `.env` pekar på,
 med lösenordet maskerat.
 
+Slipp handpåläggningen: kör `npm run env:supabase`, klistra in strängen
+från **Connect → Transaction pooler** och skriv lösenordet. Skriptet räknar
+ut båda adresserna, kodar om tecken som `@` och `#` i lösenordet, och
+kontrollerar att de går fram.
+
 Kör du en egen Postgres kan båda peka på samma adress. Därefter:
 
 ```bash
@@ -66,6 +71,7 @@ npm run typecheck  # TypeScript
 npm run test       # Vitest
 npm run test:e2e   # Playwright
 npm run db:migrate # ny migrering efter schemaändring
+npm run env:supabase # skriver databasadresserna i .env åt dig
 npm run env:check  # kontrollerar databasadresserna i .env
 ```
 

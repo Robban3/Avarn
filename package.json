@@ -21,7 +21,8 @@
     "db:sql:migrations": "node scripts/generate-supabase-migration-sql.mjs",
     "map": "node scripts/generate-sweden-map.mjs",
     "icons": "node scripts/generate-icons.mjs",
-    "env:check": "node scripts/check-env.mjs"
+    "env:check": "node scripts/check-env.mjs",
+    "env:supabase": "node scripts/set-supabase-env.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

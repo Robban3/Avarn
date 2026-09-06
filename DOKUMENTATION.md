@@ -864,6 +864,13 @@ Poolarens värdnamn har IPv4 och fungerar oavsett nät. Användarnamnet är
 `postgres.<projekt>` där och inte bara `postgres` – kopiera hela strängen
 ur Supabase i stället för att skriva om den för hand.
 
+`npm run env:supabase` sätter ihop båda adresserna åt en: man klistrar in
+strängen från Connect → Transaction pooler, skriver lösenordet en gång, och
+skriptet räknar ut sessionspoolarens adress, kodar om tecken som `@` och `#`
+i lösenordet och vägrar ta emot en direktanslutning. Att bygga adresserna
+för hand är fyra fel som alla ger samma otydliga meddelande: fel värdnamn,
+fel port, kvarlämnad platshållare, och okodade tecken.
+
 `npm run env:check` skiljer fallen åt när något inte går fram: den visar
 vad `.env` pekar på, vilken sorts anslutning det är, om värdnamnet ger
 IPv4 eller bara IPv6, och om porten svarar. Lösenordet maskeras alltid, så
@@ -1004,6 +1011,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run db:sql` | Genererar om `prisma/supabase-setup.sql`. |
 | `npm run db:sql:migrations` | Genererar om filerna i `prisma/supabase/`. |
 | `npm run setup` | Skapar `.env`. |
+| `npm run env:supabase` | Skriver `DATABASE_URL` och `DIRECT_URL` utifrån strängen Supabase visar. Frågar efter lösenordet och kodar om det. |
 | `npm run env:check` | Kontrollerar databasadresserna i `.env` – sort, DNS och om porten svarar. Lösenordet maskeras. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
 | `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
