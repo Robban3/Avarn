@@ -954,6 +954,10 @@ repository → `Robban3/Avarn`**.
 | Build command | lämna tomt |
 | Deploy command | `npm run cf:deploy` |
 
+Workerns namn kommer ur `wrangler.jsonc` och måste vara samma som den
+Worker som redan finns i kontot – annars skapar driftsättningen en ny
+bredvid och adressen man tittar på blir aldrig uppdaterad.
+
 `cf:deploy` bygger och driftsätter i ett svep, så byggsteget behöver inte
 sättas separat. Hemligheterna läggs in under **Settings → Variables and
 Secrets** på samma sätt som med `wrangler secret put` – de följer aldrig

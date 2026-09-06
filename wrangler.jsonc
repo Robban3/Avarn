@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "avarn-hundtjanst",
+  "name": "avarn",
   // src/worker.ts lindar OpenNexts worker och lägger till
   // schemaläggningen. Förfrågningarna går orörda vidare dit.
   "main": "src/worker.ts",
