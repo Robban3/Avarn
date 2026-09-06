@@ -8,9 +8,17 @@
 // värden kan läggas till utan migrering. De tillåtna värdena definieras i
 // src/lib/domain.ts och valideras med Zod innan de skrivs.
 
+// Klienten genereras till node_modules och inte till src/, så att den nås
+// som ett paket. Ett kataloguppslag går förbi paketets exports-karta, och
+// då väljs alltid Node-grenen – vars wasm-laddning inte fungerar i
+// Cloudflare Workers. Som paket kan den dessutom hållas utanför Next-bygget
+// med serverExternalPackages, så att bundlaren aldrig rör dess wasm.
+//
+// node_modules versionshanteras inte. Klienten återskapas av postinstall,
+// som kör prisma generate vid varje installation.
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  output   = "../node_modules/avarn-prisma"
 }
 
 datasource db {

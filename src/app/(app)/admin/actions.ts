@@ -46,7 +46,7 @@ export async function createUser(
       role: data.role,
       regionId: data.regionId || null,
       phone: data.phone || null,
-      passwordHash: await bcrypt.hash(data.password, 10),
+      passwordHash: bcrypt.hashSync(data.password, 10),
     },
   });
 
@@ -122,7 +122,7 @@ export async function resetPassword(
 
   await db.user.update({
     where: { id: target.id },
-    data: { passwordHash: await bcrypt.hash(temporary, 10) },
+    data: { passwordHash: bcrypt.hashSync(temporary, 10) },
   });
 
   await audit({

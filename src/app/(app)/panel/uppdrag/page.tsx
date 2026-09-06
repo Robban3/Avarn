@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { missionsByDiscipline, periodFran } from "@/lib/panel";
 import { formatShortDate, formatTime } from "@/lib/format";
 import { MISSION_STATUS_LABELS, PERIODER, type PeriodKey } from "@/lib/domain";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 
 export const metadata: Metadata = { title: "Uppdrag" };
 

@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 import { ROLES, type Role } from "./domain";
 import type { SessionUser } from "./session";
 

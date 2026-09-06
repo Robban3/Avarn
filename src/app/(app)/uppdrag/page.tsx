@@ -30,7 +30,7 @@ import {
   formatMonthShort,
   formatTime,
 } from "@/lib/format";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 
 export const metadata: Metadata = { title: "Uppdrag" };
 

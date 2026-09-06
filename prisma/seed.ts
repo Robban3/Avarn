@@ -11,7 +11,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "../src/generated/prisma";
+import { PrismaClient } from "avarn-prisma";
 
 // Seed skriver mycket på kort tid och använder därför direktanslutningen
 // när en sådan är angiven, i stället för Supabase poolare.

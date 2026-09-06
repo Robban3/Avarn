@@ -6,7 +6,7 @@ import { requirePanelUser } from "@/lib/auth";
 import { seesAllRegions, teamScope } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { dateKey, formatTime } from "@/lib/format";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 
 export const metadata: Metadata = { title: "Kalender" };
 

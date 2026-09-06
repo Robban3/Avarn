@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "avarn-prisma";
 
 /**
  * En delad PrismaClient. I utveckling återanvänds instansen över

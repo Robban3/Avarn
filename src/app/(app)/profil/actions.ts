@@ -48,7 +48,7 @@ export async function changePassword(
   });
   if (!record) return { error: "Kontot finns inte längre." };
 
-  const ok = await bcrypt.compare(parsed.data.current, record.passwordHash);
+  const ok = bcrypt.compareSync(parsed.data.current, record.passwordHash);
   if (!ok) {
     await audit({
       userId: user.id,
@@ -62,7 +62,7 @@ export async function changePassword(
 
   await db.user.update({
     where: { id: user.id },
-    data: { passwordHash: await bcrypt.hash(parsed.data.next, 10) },
+    data: { passwordHash: bcrypt.hashSync(parsed.data.next, 10) },
   });
 
   await audit({

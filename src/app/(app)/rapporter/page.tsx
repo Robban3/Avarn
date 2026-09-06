@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { formatShortDate } from "@/lib/format";
 import { REPORT_STATUS_LABELS, reportTone } from "@/lib/domain";
 import { bokstavligt } from "@/lib/fritext";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 
 export const metadata: Metadata = { title: "Rapporter" };
 

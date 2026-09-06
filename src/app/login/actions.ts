@@ -51,7 +51,11 @@ export async function login(
     return { error: genericError };
   }
 
-  const ok = await bcrypt.compare(password, user.passwordHash);
+  // Synkront, inte await bcrypt.compare: bcryptjs asynkrona API schemalägger
+  // sitt arbete på ett sätt som aldrig fullföljs i Cloudflare Workers, och
+  // förfrågan hänger tills körtiden avbryter den. Den synkrona vägen gör
+  // samma arbete utan schemaläggaren.
+  const ok = bcrypt.compareSync(password, user.passwordHash);
   if (!ok) {
     await audit({
       userId: user.id,

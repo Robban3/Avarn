@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Prisma-klienten är genererad kod och ska inte granskas.
-    "src/generated/**",
     // Cloudflare-bygget: adapterns utdata, inte vår kod.
     ".open-next/**",
     ".wrangler/**",

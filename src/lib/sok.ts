@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "avarn-prisma";
 import { db } from "./db";
 import { can, regionScope, teamScope } from "./authz";
 import { bokstavligt } from "./fritext";

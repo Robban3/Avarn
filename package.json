@@ -23,9 +23,9 @@
     "icons": "node scripts/generate-icons.mjs",
     "env:check": "node scripts/check-env.mjs",
     "env:supabase": "node scripts/set-supabase-env.mjs",
-    "cf:build": "opennextjs-cloudflare build",
-    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "cf:build": "node scripts/cf.mjs build",
+    "cf:preview": "node scripts/cf.mjs preview",
+    "cf:deploy": "node scripts/cf.mjs deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
