@@ -148,11 +148,12 @@ src/
     login/  nekad/  layout.tsx  globals.css
   components/       26 komponenter. ui.tsx är biblioteket.
   lib/              26 moduler. Domänlogik och databasfrågor.
-  generated/prisma/ Genererad Prisma-klient. Granskas inte av ESLint.
+  worker.ts         Cloudflares ingång. Lindar OpenNext och kör cron.
+node_modules/avarn-prisma/  Genererad Prisma-klient. Se kapitel 9.
 prisma/             schema.prisma, migrations/, seed.ts, supabase-SQL.
 e2e/                Playwright, 91 prov i 14 filer.
 public/             sw.js, manifest, ikoner.
-scripts/            Fem hjälpskript, se kapitel 10.
+scripts/            Sex hjälpskript, se kapitel 10.
 data/               Länsgeometrin till Sverigekartan, med källhänvisning.
 ```
 
@@ -172,9 +173,14 @@ dygnsgräns den ritar.
 
 `src/lib/db.ts` skapar en delad `PrismaClient` med `@prisma/adapter-pg`
 och återanvänder den över hot reloads i utveckling, så att inte varje
-omladdning öppnar nya anslutningar. Prisma-CLI:t (migreringar, studio)
-läser i stället sin anslutning ur `prisma.config.ts` och använder
-`DIRECT_URL` – poolaren släpper inte igenom schemaändringar.
+omladdning öppnar nya anslutningar. I Cloudflare Workers sparas den
+däremot aldrig – se kapitel 9. Prisma-CLI:t (migreringar, studio) läser i
+stället sin anslutning ur `prisma.config.ts` och använder `DIRECT_URL` –
+poolaren släpper inte igenom schemaändringar.
+
+Klienten genereras till `node_modules/avarn-prisma` och inte till `src/`,
+vilket Cloudflare-bygget kräver. Bara `src/lib/db.ts` importerar själva
+klienten; de sex andra ställena tar `import type { Prisma }` därifrån.
 
 ---
 
@@ -857,8 +863,8 @@ initialer. Läggs en bildadress in i `Dog.photoUrl` eller
 | `AUTH_SECRET` | ja | Signerar sessionskakan. Minst 16 tecken, annars startar inte appen. |
 | `CRON_KEY` | för påminnelser | Nyckeln som certifikatjobbet autentiserar med. |
 | `CRON_SECRET` | nej | Vercels egen cron-hemlighet, godtas som alternativ. |
-| `SUPABASE_URL` | i drift | Projektets adress, för lagring av bilagor. |
-| `SUPABASE_SERVICE_ROLE_KEY` | i drift | Nyckel till lagringen. |
+| `SUPABASE_URL` | i drift | Projektets adress, för lagring av bilagor. Obligatorisk på Cloudflare. |
+| `SUPABASE_SERVICE_ROLE_KEY` | i drift | Nyckel till lagringen. Obligatorisk på Cloudflare. |
 
 `npm run setup` skapar `.env` med slumpade `AUTH_SECRET` och `CRON_KEY`.
 Den rör inte en befintlig fil. Databasadresserna fylls i för hand.
@@ -908,6 +914,64 @@ följer med varje driftsättning. `vercel.json` lägger appen i Dublin
 (`dub1`), samma region som en Supabase i `eu-west-1`, och schemalägger
 `/api/cron/paminnelser` klockan 06 varje dag.
 
+### Cloudflare Workers
+
+Appen kan köras på Cloudflare i stället för Vercel. Bygget går genom
+OpenNexts adapter, som packar Next-bygget till en Worker.
+
+```bash
+npm run cf:build     # bygger .open-next/
+npm run cf:preview   # kör bygget lokalt i workerd
+npm run cf:deploy    # driftsätter
+```
+
+`wrangler.jsonc` håller inställningarna: `nodejs_compat` (Prisma öppnar en
+riktig TCP-anslutning), de statiska filerna som en assets-bindning, och
+cron klockan 06 – samma tid som `vercel.json` har.
+
+Miljövariablerna sätts som hemligheter i stället för i en `.env`:
+
+```bash
+npx wrangler secret put DATABASE_URL
+npx wrangler secret put AUTH_SECRET
+npx wrangler secret put CRON_KEY
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+```
+
+`DIRECT_URL` behövs inte i Workern. Den används bara av
+`prisma migrate deploy`, som körs från en dator eller ett byggsteg – inte
+från appen.
+
+#### Fem saker som skiljer sig från Node
+
+En Worker är ingen Node-process. Fem ställen i koden vet om det, och alla
+fem är enkla att missa eftersom de går igenom i utveckling och faller
+först i drift.
+
+| Var | Vad | Varför |
+| --- | --- | --- |
+| `next.config.ts` | Prisma-klienten genereras till `node_modules/avarn-prisma` och hålls utanför bygget med `serverExternalPackages`. | Prismas frågekompilator är wasm. Workers tillåter wasm bara som **importerad modul**, och paketets exports-karta har en workerd-gren som gör det. Bundlas klienten in blir wasm en chunk i stället för en modul, och Prisma får tillbaka `undefined`. |
+| `next.config.ts` | `pg-cloudflare` och klienten läggs i `outputFileTracingIncludes`. | Båda finns bara bakom villkor Next inte spårar, så utan raden saknas de i bunten. |
+| `src/lib/db.ts` | Klienten sparas aldrig mellan förfrågningar, och poolen får en enda anslutning. | En socket hör till förfrågan som öppnade den. En sparad klient bär med sig en död anslutning in i nästa förfrågan, som hänger tills körtiden avbryter den – första inloggningen gick igenom, de följande inte. |
+| `src/lib/media.ts` | Diskvägen stoppas innan den börjar. | Det finns inget filsystem. Supabase Storage är enda vägen, och `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY` är därför **obligatoriska** här – inte bara rekommenderade. |
+| Inloggning och lösenordsbyte | `bcryptjs` anropas synkront (`hashSync`, `compareSync`). | Bibliotekets asynkrona gren delar upp arbetet över `setImmediate`, och i workerd blir den aldrig klar. Förfrågan hänger utan felmeddelande. |
+
+Vilken körtid appen står i avgörs på ett ställe, `src/lib/kortid.ts`:
+Workers anger sig själv i `navigator.userAgent`.
+
+#### Cron
+
+`src/worker.ts` lindar OpenNexts byggda worker och lägger till en
+`scheduled`-hanterare. Den anropar `/api/cron/paminnelser` i samma Worker
+med `CRON_KEY` i `x-cron-key` – alltså samma väg som en manuell körning,
+så påminnelserna är beskrivna en enda gång. Förfrågningar går orörda
+vidare till OpenNext.
+
+Importen sker under namnet `open-next-worker`, som `wrangler.jsonc` binder
+till `.open-next/worker.js`. Det är för att `tsc` ska ge samma svar på ett
+nyklonat repo som på ett byggt.
+
 ### Databasen i Supabase
 
 Går det inte att köra `npm run db:setup` finns SQL:en färdig i repot:
@@ -946,11 +1010,13 @@ du slå på radsäkerheten själv – kör raderna längst ner i
 
 ### Bilagor
 
-Vercels filsystem är flyktigt, så uppladdade bilder och filmer kan inte
-ligga på disk. Är `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY` satta
-sparas de i en privat hink (`avarn-media`) i Supabase Storage, som skapas
-automatiskt vid första uppladdningen. Saknas nycklarna används disken
-(`storage/uploads/`), så att lokal utveckling fungerar utan moln.
+Vercels filsystem är flyktigt och en Cloudflare Worker har inget alls, så
+uppladdade bilder och filmer kan inte ligga på disk. Är `SUPABASE_URL` och
+`SUPABASE_SERVICE_ROLE_KEY` satta sparas de i en privat hink
+(`avarn-media`) i Supabase Storage, som skapas automatiskt vid första
+uppladdningen. Saknas nycklarna används disken (`storage/uploads/`), så att
+lokal utveckling fungerar utan moln – utom i Workers, där uppladdningen i
+stället svarar med vad som saknas.
 
 Utlämningen går oavsett lagring genom `/api/media/[id]`, som gör
 behörighetskontrollen först. Filerna är aldrig publikt åtkomliga.
@@ -967,7 +1033,8 @@ curl -X POST -H "x-cron-key: $CRON_KEY" https://.../api/cron/paminnelser
 ```
 
 Vercels schemaläggare kan inte sätta egna huvuden och skickar i stället
-`Authorization: Bearer …`; båda formerna godtas.
+`Authorization: Bearer …`; båda formerna godtas. På Cloudflare anropas
+rutten av `src/worker.ts` med `x-cron-key`.
 
 ### Konton i exempeldatan
 

@@ -4,6 +4,7 @@ import { ChartCard } from "@/components/AdminCharts";
 import { StatusDot, Td, Th } from "@/components/PanelUI";
 import { requireCapability } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { iWorkers } from "@/lib/kortid";
 import { usesCloudStorage, BUCKET } from "@/lib/storage";
 import { formatRelative } from "@/lib/format";
 import {
@@ -48,7 +49,13 @@ export default async function PanelSettingsPage() {
   const drift = [
     {
       namn: "Bilagor lagras i",
-      varde: moln ? `Supabase Storage (${BUCKET})` : "Filsystemet på servern",
+      // Utan nycklar används disken – men en Cloudflare Worker har ingen,
+      // och då är raden en varning och inte en beskrivning.
+      varde: moln
+        ? `Supabase Storage (${BUCKET})`
+        : iWorkers
+          ? "Ingenting – nycklarna saknas och här finns ingen disk"
+          : "Filsystemet på servern",
       ok: moln,
       stalls: "SUPABASE_URL och SUPABASE_SERVICE_ROLE_KEY",
     },

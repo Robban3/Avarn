@@ -1,10 +1,9 @@
 /**
  * Bygger och driftsätter Cloudflare-varianten.
  *
- * Finns för att sätta CF_BUILD=1, som next.config.ts läser för att peka
- * Prisma-klienten mot sin workerd-ingång. Ett skript i stället för
- * "CF_BUILD=1 opennextjs-cloudflare build" direkt i package.json, eftersom
- * den formen inte fungerar i cmd.exe på Windows – och det är där appen
+ * OpenNexts kommandon för att köra och driftsätta bygger inte själva, så
+ * varje läge är två steg. Ett skript i stället för "&&" i package.json,
+ * eftersom kedjan ska fungera likadant i cmd.exe – och det är där appen
  * utvecklas.
  *
  *   node scripts/cf.mjs build     bygger
@@ -19,13 +18,11 @@ if (!["build", "preview", "deploy"].includes(lage)) {
   process.exit(1);
 }
 
-const miljo = { ...process.env, CF_BUILD: "1" };
 const steg = lage === "build" ? ["build"] : ["build", lage];
 
 for (const kommando of steg) {
   const svar = spawnSync("npx", ["opennextjs-cloudflare", kommando], {
     stdio: "inherit",
-    env: miljo,
     shell: process.platform === "win32",
   });
   if (svar.status !== 0) process.exit(svar.status ?? 1);

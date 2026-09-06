@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "avarn-prisma";
+import { iWorkers } from "./kortid";
 
 /**
  * Anslutningen till databasen.
@@ -8,11 +9,6 @@ import { PrismaClient } from "avarn-prisma";
  * laddas. I Cloudflare Workers laddas moduler utanför varje förfrågan, och
  * en anslutning som öppnas där hör inte hemma i någon av dem.
  */
-
-/** Sant i Cloudflare Workers. Körtiden anger sig själv i navigator. */
-const iWorkers =
-  typeof navigator !== "undefined" &&
-  navigator.userAgent === "Cloudflare-Workers";
 
 const skapaKlient = () => {
   const connectionString = process.env.DATABASE_URL;

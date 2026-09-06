@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { iWorkers } from "./kortid";
 import { BUCKET, ensureBucket, storageClient } from "./storage";
 
 /**
@@ -11,6 +12,10 @@ import { BUCKET, ensureBucket, storageClient } from "./storage";
  * Var filen faktiskt ligger avgörs av src/lib/storage.ts: Supabase Storage
  * när nycklarna är satta, annars disken. Anropande kod behöver inte veta
  * vilket.
+ *
+ * Disken finns bara i Node. I en Cloudflare Worker är Supabase Storage
+ * enda vägen, och saknas nycklarna där säger diskEllerFel() ifrån i stället
+ * för att låta node:fs falla med något som inte pekar på orsaken.
  */
 
 const UPLOAD_DIR = path.join(process.cwd(), "storage", "uploads");
@@ -44,6 +49,22 @@ export function uploadPath(storedName: string) {
   return path.join(UPLOAD_DIR, storedName);
 }
 
+/**
+ * Stoppar diskvägen innan den börjar, i körtider som inte har någon disk.
+ *
+ * En Worker har inget filsystem. Utan den här kontrollen blir felet det som
+ * node:fs råkar kasta – "no such file or directory" på en uppladdning som
+ * borde ha lyckats – och ingenting i det pekar på att SUPABASE_URL och
+ * SUPABASE_SERVICE_ROLE_KEY är det som saknas.
+ */
+function diskEllerFel() {
+  if (!iWorkers) return;
+  throw new Error(
+    "Bilagor kräver Supabase Storage här. Sätt SUPABASE_URL och " +
+      "SUPABASE_SERVICE_ROLE_KEY i miljön (Cloudflare: wrangler secret put).",
+  );
+}
+
 /** Sparar filen med ett slumpat namn så att inget originalnamn kan styra sökvägen. */
 export async function storeUpload(file: File) {
   const spec = ALLOWED[file.type];
@@ -67,6 +88,7 @@ export async function storeUpload(file: File) {
       throw new Error(`Kunde inte spara filen: ${error.message}`);
     }
   } else {
+    diskEllerFel();
     await mkdir(UPLOAD_DIR, { recursive: true });
     await writeFile(uploadPath(storedName), bytes);
   }
@@ -90,6 +112,8 @@ export async function readUpload(storedName: string): Promise<Buffer | null> {
     return Buffer.from(await data.arrayBuffer());
   }
 
+  diskEllerFel();
+
   try {
     return await readFile(uploadPath(storedName));
   } catch {
@@ -104,6 +128,8 @@ export async function removeUpload(storedName: string) {
     await client.storage.from(BUCKET).remove([storedName]);
     return;
   }
+
+  diskEllerFel();
 
   try {
     await unlink(uploadPath(storedName));

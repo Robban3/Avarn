@@ -73,6 +73,8 @@ npm run test:e2e   # Playwright
 npm run db:migrate # ny migrering efter schemaändring
 npm run env:supabase # skriver databasadresserna i .env åt dig
 npm run env:check  # kontrollerar databasadresserna i .env
+npm run cf:preview # kör Cloudflare-bygget lokalt i workerd
+npm run cf:deploy  # driftsätter på Cloudflare Workers
 ```
 
 Hela listan finns under [Utveckling](DOKUMENTATION.md#10-utveckling).
@@ -84,3 +86,7 @@ PostgreSQL. Inloggningen är en signerad cookie (JWT via `jose`) med
 bcrypt-hashade lösenord; formulär går genom Server Actions med
 Zod-validering. Appen fungerar utan uppkoppling – se
 [Offline](DOKUMENTATION.md#7-offline).
+
+Den kör både på Vercel och på Cloudflare Workers (OpenNext-adaptern,
+`wrangler.jsonc`). Vad som skiljer körtiderna åt står under
+[Drift](DOKUMENTATION.md#9-drift).

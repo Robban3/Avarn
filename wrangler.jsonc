@@ -1,7 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "avarn-hundtjanst",
-  "main": ".open-next/worker.js",
+  // src/worker.ts lindar OpenNexts worker och lägger till
+  // schemaläggningen. Förfrågningarna går orörda vidare dit.
+  "main": "src/worker.ts",
   "compatibility_date": "2026-09-01",
 
   // nodejs_compat krävs av Prisma. Adaptern går via node-postgres, som
@@ -9,14 +11,21 @@
   // varken sockets eller node:crypto i körmiljön.
   "compatibility_flags": ["nodejs_compat"],
 
+  // src/worker.ts importerar OpenNexts byggda worker under ett namn i
+  // stället för en sökväg, så att typkontrollen inte beror på om bygget
+  // har körts. Här knyts namnet till filen.
+  "alias": {
+    "open-next-worker": "./.open-next/worker.js"
+  },
+
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
 
   // Certifikatpåminnelserna. Samma tid som vercel.json hade: klockan 06
-  // varje dygn. Hanteraren ligger i src/scheduled.ts och anropar samma
-  // rutt som en manuell körning skulle göra.
+  // varje dygn. Hanteraren ligger i src/worker.ts och anropar samma rutt
+  // som en manuell körning skulle göra.
   "triggers": {
     "crons": ["0 6 * * *"]
   },
