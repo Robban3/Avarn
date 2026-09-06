@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "avarn-hundtjanst",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+
+  // nodejs_compat krävs av Prisma. Adaptern går via node-postgres, som
+  // öppnar en riktig TCP-anslutning till Supabase – utan flaggan finns
+  // varken sockets eller node:crypto i körmiljön.
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Certifikatpåminnelserna. Samma tid som vercel.json hade: klockan 06
+  // varje dygn. Hanteraren ligger i src/scheduled.ts och anropar samma
+  // rutt som en manuell körning skulle göra.
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
+
+  "observability": { "enabled": true }
+}
