@@ -23,12 +23,16 @@ const secret = () => randomBytes(32).toString("hex");
 
 const content = `# Skapad av "npm run setup". Checka aldrig in den här filen.
 
-# Anslutningen till databasen. Hämtas i Supabase under
-# Project Settings > Database > Connection string.
+# Anslutningen till databasen. Hämtas i Supabase under "Connect".
 #
 #   DATABASE_URL  används av appen. Ta "Transaction pooler" (port 6543).
-#   DIRECT_URL    används av migreringar, som inte fungerar via poolaren.
-#                 Ta "Direct connection" (port 5432).
+#   DIRECT_URL    används av migreringar. Ta "Session pooler" (port 5432);
+#                 transaktionspoolaren släpper inte igenom schemaändringar.
+#
+# Ta poolaren, inte "Direct connection". Båda adresserna ska innehålla
+# "pooler.supabase.com". Direktanslutningen db.<projekt>.supabase.co har
+# bara IPv6, och på ett IPv4-nät ger den "Can't reach database server"
+# fast lösenordet är rätt.
 #
 # Kör en egen Postgres i stället? Sätt båda till samma adress.
 DATABASE_URL=""

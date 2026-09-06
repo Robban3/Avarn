@@ -18,12 +18,19 @@ npm run setup     # skapar .env med slumpade hemligheter
 ```
 
 Öppna sedan `.env` och fyll i de två databasadresserna. I Supabase finns de
-under **Project Settings → Database → Connection string**:
+under **Connect**:
 
 | Variabel | Vilken anslutning | Varför |
 | --- | --- | --- |
-| `DATABASE_URL` | Transaction pooler, port 6543 | Appens anslutning. Poolaren klarar många korta anslutningar. |
-| `DIRECT_URL` | Direct connection, port 5432 | Migreringar. Poolaren släpper inte igenom schemaändringar. |
+| `DATABASE_URL` | **Transaction pooler**, port 6543 | Appens anslutning. Poolaren klarar många korta anslutningar. |
+| `DIRECT_URL` | **Session pooler**, port 5432 | Migreringar. Transaktionspoolaren släpper inte igenom schemaändringar, men sessionspoolaren gör det. |
+
+**Ta poolaren, inte "Direct connection".** Båda adresserna ska börja med
+`aws-0-…pooler.supabase.com`. Supabases direktanslutning
+(`db.<projekt>.supabase.co`) har sedan 2024 bara en IPv6-adress, och de
+flesta hemma- och kontorsnät är IPv4. Pekar `DATABASE_URL` dit får du
+`Can't reach database server` vid inloggning, utan att något är fel på
+lösenordet eller databasen.
 
 Kör du en egen Postgres kan båda peka på samma adress. Därefter:
 

@@ -840,8 +840,8 @@ initialer. Läggs en bildadress in i `Dog.photoUrl` eller
 
 | Variabel | Krävs | Vad den är |
 | --- | --- | --- |
-| `DATABASE_URL` | ja | Appens anslutning. Supabase: transaction pooler, port 6543. |
-| `DIRECT_URL` | ja | Migreringarnas anslutning. Supabase: direct/session, port 5432. Poolaren släpper inte igenom schemaändringar. |
+| `DATABASE_URL` | ja | Appens anslutning. Supabase: **transaction pooler**, port 6543. |
+| `DIRECT_URL` | ja | Migreringarnas anslutning. Supabase: **session pooler**, port 5432. Transaktionspoolaren släpper inte igenom schemaändringar, men sessionspoolaren gör det. |
 | `AUTH_SECRET` | ja | Signerar sessionskakan. Minst 16 tecken, annars startar inte appen. |
 | `CRON_KEY` | för påminnelser | Nyckeln som certifikatjobbet autentiserar med. |
 | `CRON_SECRET` | nej | Vercels egen cron-hemlighet, godtas som alternativ. |
@@ -850,6 +850,23 @@ initialer. Läggs en bildadress in i `Dog.photoUrl` eller
 
 `npm run setup` skapar `.env` med slumpade `AUTH_SECRET` och `CRON_KEY`.
 Den rör inte en befintlig fil. Databasadresserna fylls i för hand.
+
+**Båda databasadresserna ska gå genom poolaren**, alltså ett värdnamn som
+börjar med `aws-0-…pooler.supabase.com`. Supabases direktanslutning,
+`db.<projekt>.supabase.co`, har sedan 2024 **bara en IPv6-adress** – den
+saknar A-post helt. De flesta hemma- och kontorsnät i Sverige är IPv4, och
+då går anslutningen inte ens att försöka: Prisma svarar
+`Can't reach database server at db.<projekt>.supabase.co` fast både
+lösenordet och databasen är i sin ordning. Felet syns först vid inloggning,
+eftersom det är den första sidan som frågar databasen.
+
+Poolarens värdnamn har IPv4 och fungerar oavsett nät. Användarnamnet är
+`postgres.<projekt>` där och inte bara `postgres` – kopiera hela strängen
+ur Supabase i stället för att skriva om den för hand.
+
+Appen ansluter genom `@prisma/adapter-pg`, alltså node-postgres, som inte
+använder namngivna förberedda satser. Därför fungerar transaktionspoolaren
+utan `?pgbouncer=true`.
 
 `SUPABASE_SERVICE_ROLE_KEY` går förbi radsäkerheten och får aldrig hamna i
 klientkod eller i en `NEXT_PUBLIC_`-variabel. Den används bara på servern,
