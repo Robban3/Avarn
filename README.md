@@ -30,7 +30,8 @@ under **Connect**:
 (`db.<projekt>.supabase.co`) har sedan 2024 bara en IPv6-adress, och de
 flesta hemma- och kontorsnät är IPv4. Pekar `DATABASE_URL` dit får du
 `Can't reach database server` vid inloggning, utan att något är fel på
-lösenordet eller databasen.
+lösenordet eller databasen. `npm run env:check` säger vad `.env` pekar på,
+med lösenordet maskerat.
 
 Kör du en egen Postgres kan båda peka på samma adress. Därefter:
 
@@ -65,6 +66,7 @@ npm run typecheck  # TypeScript
 npm run test       # Vitest
 npm run test:e2e   # Playwright
 npm run db:migrate # ny migrering efter schemaändring
+npm run env:check  # kontrollerar databasadresserna i .env
 ```
 
 Hela listan finns under [Utveckling](DOKUMENTATION.md#10-utveckling).

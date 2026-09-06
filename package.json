@@ -20,7 +20,8 @@
     "db:sql": "node scripts/generate-supabase-sql.mjs",
     "db:sql:migrations": "node scripts/generate-supabase-migration-sql.mjs",
     "map": "node scripts/generate-sweden-map.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "env:check": "node scripts/check-env.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -864,6 +864,12 @@ Poolarens värdnamn har IPv4 och fungerar oavsett nät. Användarnamnet är
 `postgres.<projekt>` där och inte bara `postgres` – kopiera hela strängen
 ur Supabase i stället för att skriva om den för hand.
 
+`npm run env:check` skiljer fallen åt när något inte går fram: den visar
+vad `.env` pekar på, vilken sorts anslutning det är, om värdnamnet ger
+IPv4 eller bara IPv6, och om porten svarar. Lösenordet maskeras alltid, så
+utskriften går att skicka vidare. `src/lib/db.ts` säger dessutom till vid
+start i utvecklingsläge när `DATABASE_URL` pekar på direktanslutningen.
+
 Appen ansluter genom `@prisma/adapter-pg`, alltså node-postgres, som inte
 använder namngivna förberedda satser. Därför fungerar transaktionspoolaren
 utan `?pgbouncer=true`.
@@ -998,6 +1004,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run db:sql` | Genererar om `prisma/supabase-setup.sql`. |
 | `npm run db:sql:migrations` | Genererar om filerna i `prisma/supabase/`. |
 | `npm run setup` | Skapar `.env`. |
+| `npm run env:check` | Kontrollerar databasadresserna i `.env` – sort, DNS och om porten svarar. Lösenordet maskeras. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
 | `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
 
