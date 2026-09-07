@@ -102,3 +102,27 @@ test("nationellt ansvarig kan filtrera statistiken på region", async ({
     page.getByText("Geografisk täckning", { exact: true }),
   ).toBeVisible();
 });
+
+test("hundföraren når registrering av hund från hundlistan", async ({
+  page,
+}) => {
+  await loggaIn(page, KONTON.hundforare);
+  await page.goto("/hundar");
+
+  // Knappen låg tidigare bara på startsidan och i panelen. Hundlistan är
+  // där man letar efter den, och där fanns den inte.
+  await page.getByRole("link", { name: "Lägg till hund" }).click();
+  await expect(page).toHaveURL(/\/hundar\/ny/);
+  await expect(page.getByRole("heading", { name: "Ny hund" })).toBeVisible();
+});
+
+test("instruktören ser ingen knapp för att lägga till hund", async ({
+  page,
+}) => {
+  await loggaIn(page, KONTON.instruktor);
+  await page.goto("/hundar");
+
+  await expect(
+    page.getByRole("link", { name: "Lägg till hund" }),
+  ).toHaveCount(0);
+});

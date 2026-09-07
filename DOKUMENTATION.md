@@ -151,7 +151,7 @@ src/
   worker.ts         Cloudflares ingång. Lindar OpenNext och kör cron.
 node_modules/avarn-prisma/  Genererad Prisma-klient. Se kapitel 9.
 prisma/             schema.prisma, migrations/, seed.ts, supabase-SQL.
-e2e/                Playwright, 92 prov i 14 filer.
+e2e/                Playwright, 94 prov i 14 filer.
 public/             sw.js, manifest, ikoner.
 scripts/            Sex hjälpskript, se kapitel 10.
 data/               Länsgeometrin till Sverigekartan, med källhänvisning.
@@ -1221,7 +1221,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test` | Vitest – 94 enhetsprov i 6 filer. |
-| `npm run test:e2e` | Playwright – 92 prov i 14 filer. |
+| `npm run test:e2e` | Playwright – 94 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
 | `npm run db:deploy` | Kör väntande migreringar mot databasen. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |

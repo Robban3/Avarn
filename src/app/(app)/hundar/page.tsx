@@ -9,7 +9,12 @@ import {
   PageHeading,
   SectionHeader,
 } from "@/components/ui";
-import { CertificateIcon, ChevronRightIcon, PawIcon } from "@/components/icons";
+import {
+  CertificateIcon,
+  ChevronRightIcon,
+  PawIcon,
+  PlusIcon,
+} from "@/components/icons";
 import { requireUser, unreadNotificationCount } from "@/lib/auth";
 import { can } from "@/lib/authz";
 import { db } from "@/lib/db";
@@ -25,6 +30,9 @@ export default async function DogsPage() {
   const user = await requireUser();
   const unread = await unreadNotificationCount(user.id);
   const showsOthers = can(user, "team:viewOthers");
+  // Samma villkor som på startsidan: den som får registrera en hund ska
+  // kunna göra det härifrån också, eftersom det är här man letar.
+  const farLaggaTill = can(user, "dog:create") || can(user, "dog:manage");
 
   // Ekipagen användaren får se – hunden nås alltid via sitt ekipage, så att
   // ingen hund kan visas utanför behörigheten.
@@ -60,9 +68,11 @@ export default async function DogsPage() {
           icon={<PawIcon className="h-7 w-7" />}
           title="Inga hundar registrerade"
           description={
-            showsOthers
-              ? "Det finns inga ekipage inom din behörighet ännu."
-              : "Din regionalt ansvariga kopplar dig till en eller flera hundar."
+            farLaggaTill
+              ? "Registrera din första hund så kopplas den till ett ekipage direkt."
+              : showsOthers
+                ? "Det finns inga ekipage inom din behörighet ännu."
+                : "Din regionalt ansvariga kopplar dig till en eller flera hundar."
           }
         />
       ) : (
@@ -166,6 +176,15 @@ export default async function DogsPage() {
           })}
         </div>
       )}
+
+      {farLaggaTill ? (
+        <div className="mt-4">
+          <Link href="/hundar/ny" className="btn btn-secondary w-full">
+            <PlusIcon className="h-[18px] w-[18px]" />
+            Lägg till hund
+          </Link>
+        </div>
+      ) : null}
     </AppShell>
   );
 }
