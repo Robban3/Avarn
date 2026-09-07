@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
+import { Pushval } from "@/components/Pushval";
 import { Avatar, PageHeading, SectionHeader } from "@/components/ui";
 import {
   CalendarIcon,
@@ -20,6 +21,7 @@ import { AvarnLogo } from "@/components/AvarnLogo";
 import { currentUserRecord, unreadNotificationCount } from "@/lib/auth";
 import { can } from "@/lib/authz";
 import { ROLE_LABELS, type Role } from "@/lib/domain";
+import { pushNycklar } from "@/lib/push";
 import { logout } from "@/app/login/actions";
 
 export const metadata: Metadata = { title: "Mer" };
@@ -93,6 +95,10 @@ export default async function MorePage() {
     { href: "/profil", label: "Min profil", Icon: UserIcon, show: true },
   ].filter((i) => i.show);
 
+  // Reglaget visas bara när push är konfigurerat. Ett reglage som inte
+  // kan göra något är sämre än inget reglage.
+  const pushnyckel = pushNycklar()?.publik ?? null;
+
   return (
     <AppShell branded title="Hundar" menu={false} unread={unread} role={role}>
       <PageHeading>Mer</PageHeading>
@@ -137,6 +143,12 @@ export default async function MorePage() {
           </Link>
         ))}
       </nav>
+
+      {pushnyckel ? (
+        <div className="mt-5">
+          <Pushval publikNyckel={pushnyckel} />
+        </div>
+      ) : null}
 
       <form action={logout} className="mt-5">
         <button type="submit" className="btn btn-danger w-full">

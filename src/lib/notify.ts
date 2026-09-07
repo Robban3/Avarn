@@ -1,10 +1,17 @@
 import "server-only";
+import { after } from "next/server";
 import { db } from "./db";
+import { vackTelefoner } from "./push";
 
 /**
  * Notifieringar skapas genom det här lagret i stället för direkt mot
- * databasen. Ska e-post eller push läggas till senare är det här den
- * kanalen kopplas in, utan att anropande kod behöver ändras.
+ * databasen. Det är också här kanalerna ut kopplas in: push till telefonen
+ * ligger här, och e-post skulle göra det utan att anropande kod ändras.
+ *
+ * Utskicket läggs i `after()` och inte i anropet. Ett server action som
+ * väntar på Apples servrar innan det svarar gör appen långsam på ett sätt
+ * användaren märker, och pushen är inte det som räknas – aviseringen finns
+ * redan i databasen när svaret går ut.
  */
 export async function notify(entry: {
   userId: string;
@@ -28,6 +35,8 @@ export async function notify(entry: {
       url: entry.url ?? null,
     },
   });
+
+  after(() => vackTelefoner(entry.userId));
 }
 
 /** Skickar samma notifiering till flera mottagare, utan dubbletter. */

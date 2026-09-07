@@ -67,6 +67,7 @@ model User {
   comments              Comment[]
   followUps             FollowUp[]             @relation("FollowUpInstructor")
   notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
   certifications        Certification[]
   uploads               MediaAsset[]           @relation("MediaUploader")
   profilePhotos         MediaAsset[]           @relation("ProfilePhotos")
@@ -594,6 +595,25 @@ model Notification {
   createdAt DateTime  @default(now())
 
   @@index([userId, readAt])
+}
+
+/// En telefon som får notiser. En rad per enhet, inte per användare –
+/// samma person kan ha appen på mobilen och på en surfplatta.
+///
+/// p256dh och auth behövs inte för de tomma utskick appen gör i dag, men
+/// de kommer med i prenumerationen ändå. Utan dem gick det inte att lägga
+/// till innehåll i utskicken senare utan att alla fick prenumerera om.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Adressen pushtjänsten lyssnar på. Unik: samma enhet ska inte få två rader.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model AuditLog {

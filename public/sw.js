@@ -110,3 +110,86 @@ async function natverkForst(begaran) {
     throw fel;
   }
 }
+
+/* --------------------------------------------------------------- Notiser */
+
+/**
+ * En push har kommit.
+ *
+ * Utskicken är tomma – de väcker bara arbetaren. Texten hämtas härifrån,
+ * från appen, så att aviseringens innehåll aldrig passerar Apples eller
+ * Googles servrar. Se kommentaren överst i src/lib/push.ts.
+ *
+ * Går hämtningen inte fram – telefonen är utloggad, eller utan täckning
+ * just då – visas ändå en notis, med en allmän text. En tyst push är
+ * värre än en vag: webbläsaren kräver dessutom att varje push leder till
+ * en synlig notis, annars dras tillståndet in.
+ */
+self.addEventListener("push", (handelse) => {
+  handelse.waitUntil(visaNotis());
+});
+
+async function visaNotis() {
+  let titel = "Avarn Hundar";
+  let text = "Du har en ny avisering.";
+  let adress = "/meddelanden";
+  let antal;
+
+  try {
+    const svar = await fetch("/api/notiser/senaste", { credentials: "include" });
+    if (svar.ok) {
+      const data = await svar.json();
+      antal = data.olasta;
+      if (data.notis) {
+        titel = data.notis.title;
+        text = data.notis.body ?? "";
+        adress = data.notis.url ?? adress;
+      }
+    }
+  } catch {
+    // Utan täckning duger den allmänna texten. Appen har aviseringen kvar.
+  }
+
+  await self.registration.showNotification(titel, {
+    body: text,
+    icon: "/ikon-192.png",
+    badge: "/ikon-192.png",
+    // Samma tagg för alla: en ny notis ersätter den förra i stället för
+    // att lägga sig på hög. Den som inte tittat på tre timmar ska mötas av
+    // ett besked, inte av tolv.
+    tag: "avarn-avisering",
+    data: { adress },
+    ...(typeof antal === "number" ? { badgeCount: antal } : {}),
+  });
+}
+
+/**
+ * Notisen trycktes.
+ *
+ * Är appen redan öppen används det fönstret – annars hade varje notis
+ * lämnat efter sig en ny flik. Fokus flyttas dit och vyn byts till
+ * aviseringens adress.
+ */
+self.addEventListener("notificationclick", (handelse) => {
+  handelse.notification.close();
+  const adress = handelse.notification.data?.adress ?? "/meddelanden";
+
+  handelse.waitUntil(
+    (async () => {
+      const fonster = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const klient of fonster) {
+        if (new URL(klient.url).origin === self.location.origin) {
+          await klient.focus();
+          if ("navigate" in klient) await klient.navigate(adress);
+          return;
+        }
+      }
+
+      await self.clients.openWindow(adress);
+    })(),
+  );
+});

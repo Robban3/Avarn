@@ -151,7 +151,7 @@ src/
   worker.ts         Cloudflares ingång. Lindar OpenNext och kör cron.
 node_modules/avarn-prisma/  Genererad Prisma-klient. Se kapitel 9.
 prisma/             schema.prisma, migrations/, seed.ts, supabase-SQL.
-e2e/                Playwright, 95 prov i 14 filer.
+e2e/                Playwright, 97 prov i 14 filer.
 public/             sw.js, manifest, ikoner.
 scripts/            Sex hjälpskript, se kapitel 10.
 data/               Länsgeometrin till Sverigekartan, med källhänvisning.
@@ -887,6 +887,9 @@ initialer. Läggs en bildadress in i `Dog.photoUrl` eller
 | `CRON_KEY` | för påminnelser | Nyckeln som certifikatjobbet autentiserar med. |
 | `SUPABASE_URL` | i drift | Projektets adress, för lagring av bilagor. Obligatorisk på Cloudflare. |
 | `SUPABASE_SERVICE_ROLE_KEY` | i drift | Nyckel till lagringen. Obligatorisk på Cloudflare. |
+| `VAPID_PUBLIC_KEY` | för notiser | Signerar push. Skapas med `npm run push:nycklar`. Inte hemlig – varje telefon får den. |
+| `VAPID_PRIVATE_KEY` | för notiser | Den hemliga halvan. Läcker den kan vem som helst skicka notiser i appens namn. |
+| `VAPID_SUBJECT` | nej | Kontaktadress till pushtjänsterna. Standard `mailto:it@avarn.se`. |
 
 `npm run setup` skapar `.env` med slumpade `AUTH_SECRET` och `CRON_KEY`.
 Den rör inte en befintlig fil. Databasadresserna fylls i för hand.
@@ -1183,6 +1186,69 @@ stället svarar med vad som saknas.
 Utlämningen går oavsett lagring genom `/api/media/[id]`, som gör
 behörighetskontrollen först. Filerna är aldrig publikt åtkomliga.
 
+### Notiser till telefonen
+
+**iPhone levererar bara push till en app som lagts till på hemskärmen**
+(iOS 16.4 och senare). I ett Safari-fönster finns `PushManager` inte alls,
+och ingenting kommer fram hur rätt allt annat än är. Reglaget under Mer
+säger det i klartext i stället för att bara se avstängt ut – utan den
+förklaringen ser funktionen ut att vara trasig.
+
+Sätt igång det så här:
+
+```bash
+npm run push:nycklar    # skriver ut de två raderna till .env
+npm run cf:secrets      # lägger upp dem på Workern
+```
+
+Utan nycklarna visas inget reglage alls. Ett reglage som inte kan göra
+något är sämre än inget reglage.
+
+#### Utskicken är tomma
+
+Web Push tillåter ett meddelande utan kropp: bara VAPID-huvudet.
+Servicearbetaren väcks, hämtar den senaste olästa aviseringen från
+`/api/notiser/senaste` och visar den.
+
+Det är ett medvetet val, av två skäl. Ett meddelande med innehåll måste
+krypteras mot mottagarens nyckel – ECDH, HKDF och AES128GCM – och det är
+krypto vi själva hade fått underhålla. Utan innehåll återstår en signerad
+JWT, som WebCrypto klarar direkt i både Node och workerd. Och
+aviseringens text passerar aldrig Apples eller Googles servrar, ens
+krypterad.
+
+Priset är att en utloggad telefon visar "Du har en ny avisering" i
+stället för rubriken.
+
+#### Vad som händer var
+
+| Del | Fil |
+| --- | --- |
+| Signering och utskick | `src/lib/push.ts` |
+| Kanalen kopplas in | `src/lib/notify.ts`, i `after()` |
+| Notisen ritas | `public/sw.js`, `push` och `notificationclick` |
+| Prenumerationen | `src/app/api/push/prenumerera/route.ts` |
+| Texten till notisen | `src/app/api/notiser/senaste/route.ts` |
+| Reglaget | `src/components/Pushval.tsx` |
+
+Utskicket ligger i `after()` och inte i anropet: ett server action som
+väntar på Apples servrar innan det svarar gör appen långsam på ett sätt
+användaren märker, och pushen är inte det som räknas – aviseringen finns
+redan i databasen när svaret går ut. Misslyckas utskicket loggas det och
+inget mer.
+
+Svarar pushtjänsten `404` eller `410` är prenumerationen död – appen är
+avinstallerad, eller notiser avstängda – och raden tas bort. Utan det
+växer tabellen med adresser som aldrig svarar. Andra felkoder rör inte
+raden: ett `403` från en brandvägg ska inte kosta någon sina notiser.
+
+Prenumerationen hör till **enheten**, inte till kontot. Samma person kan
+ha appen på mobilen och på en surfplatta och vill bli väckt på båda.
+
+Byts nycklarna ut slutar alla befintliga prenumerationer att fungera och
+varje telefon får slå på notiser igen. Gör det bara om den privata
+nyckeln läckt.
+
 ### Påminnelser om certifikat
 
 Ett schemalagt anrop skapar varningar innan behörigheter löper ut. Trösklarna
@@ -1243,8 +1309,8 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run start` | Produktionsserver. |
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
-| `npm run test` | Vitest – 94 enhetsprov i 6 filer. |
-| `npm run test:e2e` | Playwright – 95 prov i 14 filer. |
+| `npm run test` | Vitest – 109 enhetsprov i 8 filer. |
+| `npm run test:e2e` | Playwright – 97 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
 | `npm run db:deploy` | Kör väntande migreringar mot databasen. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |
@@ -1257,6 +1323,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run env:check` | Kontrollerar databasadresserna i `.env` – sort, DNS och om porten svarar. Lösenordet maskeras. |
 | `npm run map` | Genererar om `src/lib/sverige-karta.ts` ur `data/sverige-lan.geojson`. |
 | `npm run icons` | Genererar om PNG-ikonerna i `public/` ur SVG-filerna. |
+| `npm run push:nycklar` | Skapar VAPID-nyckelparet för notiser. |
 | `npm run cf:secrets` | Lägger `.env`-värdena som hemligheter på Workern. Provar adressen först. |
 | `npm run cf:build` | Bygger Cloudflare-varianten till `.open-next/`. |
 | `npm run cf:preview` | Kör Cloudflare-bygget lokalt i workerd. |

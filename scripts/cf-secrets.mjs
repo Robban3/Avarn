@@ -29,6 +29,9 @@ const HEMLIGHETER = [
   { namn: "CRON_KEY", kravs: true },
   { namn: "SUPABASE_URL", kravs: false },
   { namn: "SUPABASE_SERVICE_ROLE_KEY", kravs: false },
+  { namn: "VAPID_PUBLIC_KEY", kravs: false },
+  { namn: "VAPID_PRIVATE_KEY", kravs: false },
+  { namn: "VAPID_SUBJECT", kravs: false },
 ];
 
 /** Visar början och slutet, aldrig mitten. Nog för att känna igen, för lite för att röja. */

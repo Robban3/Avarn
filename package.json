@@ -24,6 +24,7 @@
     "icons": "node scripts/generate-icons.mjs",
     "env:check": "node scripts/check-env.mjs",
     "env:supabase": "node scripts/set-supabase-env.mjs",
+    "push:nycklar": "node scripts/generate-vapid.mjs",
     "cf:secrets": "node scripts/cf-secrets.mjs",
     "cf:build": "node scripts/cf.mjs build",
     "cf:preview": "node scripts/cf.mjs preview",

@@ -134,3 +134,36 @@ test("delningskortet är komplett och når mottagaren utan inloggning", async ({
   expect(svar.status()).toBe(200);
   expect(svar.headers()["content-type"]).toContain("image/png");
 });
+
+test("pushrutterna kräver inloggning", async ({ request }) => {
+  // Adressen en pushtjänst ger ut är i praktiken en hemlighet: den som
+  // har den kan skicka notiser till telefonen. Den får aldrig gå att
+  // koppla på ett konto utan session.
+  const utan = await request.post("/api/push/prenumerera", {
+    data: { endpoint: "https://web.push.apple.com/pahittad", keys: { p256dh: "x", auth: "y" } },
+  });
+  expect(utan.status()).toBe(401);
+
+  const notiser = await request.get("/api/notiser/senaste");
+  expect(notiser.status()).toBe(401);
+});
+
+test("notisrutten lämnar bara ut den egna sessionens aviseringar", async ({
+  page,
+}) => {
+  await loggaIn(page, KONTON.hundforare);
+  const mina = await (await page.request.get("/api/notiser/senaste")).json();
+
+  await loggaIn(page, KONTON.hundforareVast);
+  const andras = await (await page.request.get("/api/notiser/senaste")).json();
+
+  // Två förare i olika regioner ska inte se samma översta avisering. Är
+  // båda tomma säger provet ingenting, och då ska det säga ifrån.
+  expect(
+    mina.notis || andras.notis,
+    "ingen av förarna hade någon avisering – provet mäter inget",
+  ).toBeTruthy();
+  if (mina.notis && andras.notis) {
+    expect(mina.notis.title).not.toBe(andras.notis.title);
+  }
+});
