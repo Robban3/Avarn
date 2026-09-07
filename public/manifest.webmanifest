@@ -1,6 +1,6 @@
 {
-  "name": "Avarn Hundtjänst",
-  "short_name": "Avarn Hund",
+  "name": "Avarn Hundar",
+  "short_name": "Avarn Hundar",
   "description": "Operativt stöd för Avarn Securitys hundförare, instruktörer och ledning.",
   "lang": "sv-SE",
   "start_url": "/hem",

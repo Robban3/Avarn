@@ -1,4 +1,4 @@
-# Avarn Hundtjänst
+# Avarn Hundar
 
 Operativt stöd för Avarn Securitys hundverksamhet: hundförare, instruktörer,
 regional och nationell ledning. Byggd som en mobil först-webbapp (PWA) i

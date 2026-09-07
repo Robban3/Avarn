@@ -1,4 +1,4 @@
-# Avarn Hundtjänst – dokumentation
+# Avarn Hundar – dokumentation
 
 Operativt stöd för Avarn Securitys hundverksamhet. En mobil först-webbapp
 (PWA) för hundförare i fält, med en adminpanel för instruktörer och ledning
@@ -816,7 +816,7 @@ betyder att stilmallen också saknas.
 Klistras adressen in i ett SMS eller en chatt ritar mottagarens klient ett
 kort ur sidans Open Graph-taggar. Utan dem blir det en naken textrad, och
 med sidans egen titel blir det döpt efter den undersida länken råkade
-kopieras från – "Mer · Avarn Hundtjänst".
+kopieras från – "Mer · Avarn Hundar".
 
 Därför sätts `openGraph.title` i `src/app/layout.tsx` till appens namn och
 ärvs av alla sidor. Bilden är `public/og.png`, 1200×630, och adressen till

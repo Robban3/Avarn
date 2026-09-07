@@ -147,7 +147,7 @@ export default async function MorePage() {
 
       <div className="mt-10 flex flex-col items-center gap-2 pb-4">
         <AvarnLogo />
-        <p className="text-xs text-fg-dim">Hundtjänst</p>
+        <p className="text-xs text-fg-dim">Hundar</p>
       </div>
     </AppShell>
   );

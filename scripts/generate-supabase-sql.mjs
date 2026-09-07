@@ -57,7 +57,7 @@ const tables = [...body.matchAll(/^CREATE TABLE public\.("?\w+"?) \(/gm)]
   .sort();
 
 const header = `--
--- Avarn Hundtjänst – komplett uppsättning av databasen
+-- Avarn Hundar – komplett uppsättning av databasen
 --
 -- Klistra in hela den här filen i Supabase: SQL Editor > New query > Run.
 -- Filen skapar samtliga tabeller, lägger in exempeldata och slår på

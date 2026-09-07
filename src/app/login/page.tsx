@@ -21,7 +21,7 @@ export default async function LoginPage({
           <AvarnLogo size="lg" />
         </div>
 
-        <h1 className="mb-1 text-center text-xl font-semibold">Hundtjänst</h1>
+        <h1 className="mb-1 text-center text-xl font-semibold">Hundar</h1>
         <p className="mb-8 text-center text-sm text-fg-muted">
           Operativt stöd för hundförare, instruktörer och ledning.
         </p>

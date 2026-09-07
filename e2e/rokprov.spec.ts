@@ -10,7 +10,7 @@ import { KONTON, loggaIn } from "./hjalp";
 test("utloggad skickas till inloggningssidan", async ({ page }) => {
   await page.goto("/hem");
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole("heading", { name: "Hundtjänst" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hundar" })).toBeVisible();
 });
 
 test("fel lösenord avslöjar inte om kontot finns", async ({ page }) => {

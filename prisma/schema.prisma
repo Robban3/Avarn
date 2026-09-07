@@ -1,4 +1,4 @@
-// Avarn Hundtjänst – datamodell
+// Avarn Hundar – datamodell
 //
 // Navet är ekipaget (Team = hundförare + hund). Träning, uppdrag, rapporter
 // och certifikat hänger på ekipaget, vilket gör behörighetsfiltreringen till

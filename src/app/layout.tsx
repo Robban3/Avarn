@@ -28,8 +28,8 @@ const BESKRIVNING =
 export const metadata: Metadata = {
   metadataBase: new URL(ADRESS),
   title: {
-    default: "Avarn Hundtjänst",
-    template: "%s · Avarn Hundtjänst",
+    default: "Avarn Hundar",
+    template: "%s · Avarn Hundar",
   },
   description: BESKRIVNING,
   manifest: "/manifest.webmanifest",
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
    *
    * Titeln sätts här och ärvs av alla sidor, i stället för att följa
    * sidans egen. Utan den blev kortet döpt efter den undersida man råkade
-   * stå på när länken kopierades – "Mer · Avarn Hundtjänst" – vilket inte
+   * stå på när länken kopierades – "Mer · Avarn Hundar" – vilket inte
    * säger mottagaren någonting.
    */
   openGraph: {
     type: "website",
-    siteName: "Avarn Hundtjänst",
-    title: "Avarn Hundtjänst",
+    siteName: "Avarn Hundar",
+    title: "Avarn Hundar",
     description: BESKRIVNING,
     locale: "sv_SE",
     url: "/",
@@ -54,13 +54,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Avarn Hundtjänst",
+        alt: "Avarn Hundar",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Avarn Hundtjänst",
+    title: "Avarn Hundar",
     description: BESKRIVNING,
     images: ["/og.png"],
   },
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Avarn Hundtjänst",
+    title: "Avarn Hundar",
   },
 };
 

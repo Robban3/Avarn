@@ -1,5 +1,5 @@
 /**
- * Seed-data för Avarn Hundtjänst.
+ * Seed-data för Avarn Hundar.
  *
  * Innehåller ett komplett, sammanhängande exempel: fem regioner, ett antal
  * ekipage, träningshistorik, planerad träning, uppdrag, operativa rapporter

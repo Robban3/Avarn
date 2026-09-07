@@ -121,7 +121,7 @@ test("delningskortet är komplett och når mottagaren utan inloggning", async ({
 
   // Titeln ska vara appens, inte den undersida länken råkade kopieras från.
   expect(html).toContain(
-    '<meta property="og:title" content="Avarn Hundtjänst"/>',
+    '<meta property="og:title" content="Avarn Hundar"/>',
   );
   // Bildadressen måste vara absolut; Open Graph tillåter inga relativa.
   const bild = /<meta property="og:image" content="(https?:\/\/[^"]+)"/.exec(
