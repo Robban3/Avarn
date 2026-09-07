@@ -1004,6 +1004,27 @@ Bygget kräver ingen databas. `cf:build` kör `next build`, som bara
 renderar de sidor som inte frågar något: `/` och `/nekad`. Migreringarna
 körs separat, från en dator, med `npx prisma migrate deploy`.
 
+#### Workers Paid krävs
+
+Cloudflares gratisnivå ger **10 millisekunder CPU per förfrågan**. En
+serverrenderad Next-sida – React, Prisma-frågor, Sverigekartan – ligger
+långt över det, och Cloudflare avbryter den mitt i med **Error 1102,
+"Worker exceeded resource limits"**.
+
+Felet är förrädiskt eftersom det inte kommer varje gång. En varm isolat
+med redan laddade moduler kan klara en lätt sida; en tyngre vy eller en
+kallstart spricker. Det ser ut som ett sporadiskt fel och är en hård
+gräns.
+
+`/api/halsa` går igenom även på gratisnivån – den gör en fråga och
+skickar tillbaka lite JSON. Att den svarar säger alltså ingenting om att
+sidorna gör det.
+
+**Workers Paid** ($5/månad) ger 30 sekunder CPU i stället. Det är den
+enda skillnad som behövs; ingenting i koden ändras. Ingen mängd
+optimering får en serverrenderad sida att rymmas i 10 ms – det är en
+storleksordning fel, inte en marginal.
+
 #### Fem saker som skiljer sig från Node
 
 En Worker är ingen Node-process. Fem ställen i koden vet om det, och alla
