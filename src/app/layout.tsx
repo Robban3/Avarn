@@ -8,14 +8,62 @@ const inter = Inter({
   display: "swap",
 });
 
+/**
+ * Adressen appen svarar på, för de absoluta länkar delningskortet kräver.
+ *
+ * Open Graph tillåter inga relativa adresser: klienten som ritar kortet –
+ * Meddelanden, Slack, Signal – hämtar bilden från sin egen sida av nätet
+ * och har ingen aning om vilken sida den kom ifrån. Next gör om de
+ * relativa adresserna nedan till absoluta med den här som bas.
+ *
+ * Läses vid bygget, inte vid förfrågan, eftersom metadata-objektet
+ * utvärderas när modulen laddas. Sätt APP_URL som byggvariabel när
+ * adressen ändras.
+ */
+const ADRESS = process.env.APP_URL ?? "https://avarn.robert-517.workers.dev";
+
+const BESKRIVNING =
+  "Operativt stöd för Avarn Securitys hundförare, instruktörer och ledning.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(ADRESS),
   title: {
     default: "Avarn Hundtjänst",
     template: "%s · Avarn Hundtjänst",
   },
-  description:
-    "Operativt stöd för Avarn Securitys hundförare, instruktörer och ledning.",
+  description: BESKRIVNING,
   manifest: "/manifest.webmanifest",
+
+  /**
+   * Kortet som visas när adressen klistras in i ett SMS eller en chatt.
+   *
+   * Titeln sätts här och ärvs av alla sidor, i stället för att följa
+   * sidans egen. Utan den blev kortet döpt efter den undersida man råkade
+   * stå på när länken kopierades – "Mer · Avarn Hundtjänst" – vilket inte
+   * säger mottagaren någonting.
+   */
+  openGraph: {
+    type: "website",
+    siteName: "Avarn Hundtjänst",
+    title: "Avarn Hundtjänst",
+    description: BESKRIVNING,
+    locale: "sv_SE",
+    url: "/",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Avarn Hundtjänst",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Avarn Hundtjänst",
+    description: BESKRIVNING,
+    images: ["/og.png"],
+  },
   // SVG duger i webbläsarfliken, men iOS läser bara PNG när appen läggs på
   // hemskärmen. Utan apple-touch-icon klipper Safari ut en miniatyr av
   // sidan i stället, och ikonen blir en suddig bild av sidhuvudet.

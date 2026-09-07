@@ -10,6 +10,12 @@
  * Källan är SVG-filerna; PNG:erna är genererade och ska aldrig rättas för
  * hand. Ändras profilen körs `npm run icons` om.
  *
+ * Här rasteras också delningsbilden, og.png – den som visas när adressen
+ * klistras in i ett SMS eller en chatt. Texten i og.svg ligger som banor
+ * och inte som <text>, så att bilden blir densamma oavsett vilka typsnitt
+ * datorn har. Ska texten ändras måste banorna sättas om ur Inter; det är
+ * inte något man gör i en texteditor.
+ *
  * Storlekarna:
  *   apple-touch-icon  180  – iOS hemskärm (och den enda Safari letar efter)
  *   ikon-192          192  – manifestets mindre ikon
@@ -49,3 +55,18 @@ for (const { fran, till, storlek, fyrkantig } of IKONER) {
   writeFileSync(path.join(publicDir, till), png);
   console.log(`Skrev public/${till} (${storlek}×${storlek}, ${png.length} B)`);
 }
+
+/**
+ * Delningsbilden. 1200×630 är det format Open Graph anger och det enda
+ * alla klienter – iMessage, Slack, Signal, Facebook – ritar likadant.
+ */
+const OG = { bredd: 1200, hojd: 630 };
+const ogPng = await sharp(readFileSync(path.join(publicDir, "og.svg")), {
+  density: 300,
+})
+  .resize(OG.bredd, OG.hojd)
+  .png({ compressionLevel: 9 })
+  .toBuffer();
+
+writeFileSync(path.join(publicDir, "og.png"), ogPng);
+console.log(`Skrev public/og.png (${OG.bredd}×${OG.hojd}, ${ogPng.length} B)`);

@@ -107,3 +107,30 @@ test("hälsorutten svarar utan session och läcker ingenting", async ({
   expect(kropp).not.toContain("postgresql://");
   expect(kropp).not.toContain("supabase.com");
 });
+
+test("delningskortet är komplett och når mottagaren utan inloggning", async ({
+  request,
+}) => {
+  // Den som får länken i ett SMS är inte inloggad, och klienten som ritar
+  // kortet hämtar sidan och bilden från sin egen sida av nätet. Går något
+  // av det inte fram blir kortet en naken rad text – vilket inte syns
+  // förrän någon delar länken.
+  const sida = await request.get("/login");
+  expect(sida.status()).toBe(200);
+  const html = await sida.text();
+
+  // Titeln ska vara appens, inte den undersida länken råkade kopieras från.
+  expect(html).toContain(
+    '<meta property="og:title" content="Avarn Hundtjänst"/>',
+  );
+  // Bildadressen måste vara absolut; Open Graph tillåter inga relativa.
+  const bild = /<meta property="og:image" content="(https?:\/\/[^"]+)"/.exec(
+    html,
+  );
+  expect(bild, "og:image saknas eller är inte absolut").not.toBeNull();
+  expect(html).toContain('<meta property="og:image:width" content="1200"/>');
+
+  const svar = await request.get("/og.png");
+  expect(svar.status()).toBe(200);
+  expect(svar.headers()["content-type"]).toContain("image/png");
+});

@@ -151,7 +151,7 @@ src/
   worker.ts         Cloudflares ingång. Lindar OpenNext och kör cron.
 node_modules/avarn-prisma/  Genererad Prisma-klient. Se kapitel 9.
 prisma/             schema.prisma, migrations/, seed.ts, supabase-SQL.
-e2e/                Playwright, 94 prov i 14 filer.
+e2e/                Playwright, 95 prov i 14 filer.
 public/             sw.js, manifest, ikoner.
 scripts/            Sex hjälpskript, se kapitel 10.
 data/               Länsgeometrin till Sverigekartan, med källhänvisning.
@@ -811,6 +811,29 @@ att söka på i loggen, och två knappar – rita om vyn eller ta sig därifrån
 den skriver sina färger som hexvärden, eftersom en trasig layout ofta
 betyder att stilmallen också saknas.
 
+### Delningskortet
+
+Klistras adressen in i ett SMS eller en chatt ritar mottagarens klient ett
+kort ur sidans Open Graph-taggar. Utan dem blir det en naken textrad, och
+med sidans egen titel blir det döpt efter den undersida länken råkade
+kopieras från – "Mer · Avarn Hundtjänst".
+
+Därför sätts `openGraph.title` i `src/app/layout.tsx` till appens namn och
+ärvs av alla sidor. Bilden är `public/og.png`, 1200×630, och adressen till
+den måste vara absolut: klienten som ritar kortet hämtar den från sin egen
+sida av nätet. `metadataBase` gör om de relativa adresserna, och läser
+`APP_URL` vid bygget.
+
+Bildens källa är `public/og.svg`, där texten ligger som **banor och inte
+som `<text>`**. Inter finns i appen men inte nödvändigtvis på datorn som
+rasterar bilden, och en text-tagg hade då tyst bytts mot ett annat
+typsnitt. `npm run icons` rasterar den tillsammans med ikonerna.
+
+Ett prov i `e2e/atkomst.spec.ts` kontrollerar att taggarna finns, att
+bildadressen är absolut och att både sidan och bilden går att hämta utan
+inloggning – mottagaren av en länk är ju inte inloggad. Ett trasigt kort
+syns annars inte förrän någon delar adressen.
+
 ### Ikoner och logotyp
 
 Ikonerna är egna SVG-komponenter i `src/components/icons.tsx`, inget
@@ -1221,7 +1244,7 @@ laddas en gång, och en server som startades före schemaändringen svarar med
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test` | Vitest – 94 enhetsprov i 6 filer. |
-| `npm run test:e2e` | Playwright – 94 prov i 14 filer. |
+| `npm run test:e2e` | Playwright – 95 prov i 14 filer. |
 | `npm run db:migrate` | Ny migrering efter schemaändring. |
 | `npm run db:deploy` | Kör väntande migreringar mot databasen. |
 | `npm run db:setup` | Migrerar, genererar och seedar. |
