@@ -1100,6 +1100,7 @@ saknas:
   "senaste": "20260903174616_uppdragsdokument",
   "authSecret": "ok",
   "cronKey": "ok",
+  "push": "på",
   "lagring": "supabase"
 }
 ```
@@ -1114,6 +1115,7 @@ saknas:
 | | `P2037` | Slut på anslutningar. |
 | `migreringar` | färre än katalogerna i `prisma/migrations` | Databasen ligger efter. Sidorna faller på kolumner som saknas, medan hälsorutten svarar som vanligt – den frågar bara efter användare. Kör de saknade filerna ur `prisma/supabase/` i SQL Editor. |
 | `authSecret` | `saknas` / `för kort` | Sätt `AUTH_SECRET`, minst 16 tecken. Utan den går inloggningen inte att signera. |
+| `push` | `av` | VAPID-nycklarna har inte nått körtiden. Reglaget under Mer visas inte alls då. Säger inget om telefonen – bara om driftsättningen. |
 | `lagring` | `ingen` | Kör i Workers utan Supabase-nycklar. Allt utom bilagor fungerar. |
 
 Rutten lämnar aldrig ut ett värde, bara ett omdöme: att adressen är en
@@ -1376,6 +1378,22 @@ npx playwright test
 
 `networkidle` fungerar inte som väntyp när servicearbetaren är registrerad –
 den blir aldrig tyst. Vänta på ett element i stället.
+
+#### När sviten börjar falla utan att koden ändrats
+
+Proven skapar riktiga uppdrag, rapporter och aviseringar, och städar inte
+efter sig. Efter ett tiotal körningar mot samma databas har seed-datan
+trängts undan av allt som proven lagt till: uppdraget proven letar efter
+ligger inte längre överst i listan, och de faller på tidsgräns i stället
+för på en påstådd sanning.
+
+Känns igen på att felen kommer i klunga, att de tar hela tidsgränsen i
+anspråk, och att sidan i felutskriften visar orimliga siffror – "456
+olästa" är en sådan. Kör `npm run seed` och kör om.
+
+Det är inte värt att låta proven städa efter sig: en avslutningsrutin som
+raderar fel sak i en riktig databas är farligare än en svit som ibland
+behöver seedas om.
 
 ### Namngivning
 

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { iWorkers } from "@/lib/kortid";
 import { miljo, miljoantal } from "@/lib/miljo";
+import { pushArPaslaget } from "@/lib/push";
 import { usesCloudStorage } from "@/lib/storage";
 
 /**
@@ -175,6 +176,9 @@ export async function GET() {
       senaste,
       authSecret: hemlighetens_skick(),
       cronKey: miljo("CRON_KEY") ? "ok" : "saknas",
+      // Utan VAPID-nycklarna visas inget reglage för notiser, och det syns
+      // inte utifrån. Ett fält här sparar en vända med telefonen.
+      push: pushArPaslaget() ? "på" : "av",
       // Vilken av de två källorna som är tom säger var felet sitter.
       ...miljoantal(),
       lagring: usesCloudStorage() ? "supabase" : iWorkers ? "ingen" : "disk",
